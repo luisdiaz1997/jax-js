@@ -98,7 +98,7 @@ let traceStack: MainTrace[] = [];
 let dynamicTrace: MainTrace | null = null;
 
 // Push an interpreter onto the trace stack. Use this like:
-// `using { main } = newMain(...);`
+// `using main = newMain(...);`
 function newMain(
   traceType: any,
   globalData: any | null = null
@@ -147,6 +147,7 @@ abstract class Tracer {
   }
 
   abstract get aval(): AbstractValue;
+  abstract toString(): string;
 
   get shape() {
     return this.aval.shape;
@@ -251,6 +252,11 @@ export class Array extends Tracer {
     return new ConcreteArray(this.data);
   }
 
+  /** Return a simple string representation of the array's dimensions. */
+  toString(): string {
+    return `Array[${this.data.shape.join(", ")}]`;
+  }
+
   /** Convert this array into a JavaScript object (blocking). */
   js() {
     return this.data.arraySync();
@@ -289,6 +295,7 @@ function bind(
   const topTrace = findTopTrace(args);
   const tracers = args.map((arg) => fullRaise(topTrace, arg));
   const outs = topTrace.processPrimitive(prim, tracers, params);
+  // console.info(`processing rule for ${prim} on ${tracers} and got ${outs}`);
   return outs.map((out) => out.fullLower());
 }
 
@@ -404,6 +411,10 @@ class JVPTracer extends Tracer {
   get aval(): AbstractValue {
     return this.primal.aval;
   }
+
+  toString(): string {
+    return `JVPTracer(${this.primal}, ${this.tangent})`;
+  }
 }
 
 class JVPTrace extends Trace {
@@ -475,6 +486,7 @@ function jvpFlat(
   tangents: TracerValue[]
 ): [Tracer[], Tracer[]] {
   using main = newMain(JVPTrace);
+  // console.info("creating new jvp main", traceStack);
   const trace = new JVPTrace(main);
   const tracersIn = zip(primals, tangents).map(
     ([x, t]) => new JVPTracer(trace, pureArray(x), pureArray(t))
@@ -503,7 +515,7 @@ export function jvp(
     tangentsFlat
   );
   if (outTree.value === undefined) {
-    throw new Error("outTree was not set");
+    throw new Error("outTree was not set in jvp");
   }
   const primalsOut = treeUnflatten(outTree.value, primalsOutFlat);
   const tangentsOut = treeUnflatten(outTree.value, tangentsOutFlat);
@@ -577,11 +589,15 @@ class BatchTracer extends Tracer {
     }
   }
 
-  fullLower() {
+  toString(): string {
+    return `BatchTracer(${this.val}, ${this.batchDim})`;
+  }
+
+  fullLower(): Tracer {
     if (this.batchDim === null) {
       return this.val.fullLower();
     } else {
-      return this.val;
+      return this;
     }
   }
 }
@@ -641,7 +657,7 @@ function binopBatchingRule(op: (x: Tracer, y: Tracer) => Tracer) {
         x = moveBatchAxis(axisSize, xBdim, yBdim!, x);
         xBdim = yBdim;
       } else {
-        y = moveBatchAxis(axisSize, yBdim, xBdim!, y);
+        y = moveBatchAxis(axisSize, yBdim, xBdim, y);
       }
     }
     return [[op(x, y)], [xBdim]];
@@ -708,6 +724,7 @@ function vmapFlat(
   let valsOut: Tracer[], bdimsOut: (number | null)[];
   {
     using main = newMain(BatchTrace, axisSize);
+    // console.info("creating new vmap main", traceStack);
     const trace = new BatchTrace(main);
     const tracersIn = args.map((x, i) =>
       inAxes[i] === null
@@ -734,10 +751,10 @@ export function vmap(
       throw new TypeError("Mismatched tree structures in vmap");
     }
     const [fFlat, outTree] = flattenFun(f, inTree);
-    if (outTree.value === undefined) {
-      throw new Error("outTree was not set");
-    }
     const outsFlat = vmapFlat(fFlat, inAxesFlat, argsFlat);
+    if (outTree.value === undefined) {
+      throw new Error("outTree was not set in vmap");
+    }
     return treeUnflatten(outTree.value, outsFlat);
   };
 }
@@ -748,5 +765,5 @@ export function jacfwd(f: any, x: Tracer) {
   }
   const [size] = x.shape;
   const pushfwd = (v: Tracer) => jvp(f, [x], [v])[1];
-  return vmap(pushfwd, [0])(tf.eye(size));
+  return vmap(pushfwd, [0])(new Array(tf.eye(size)));
 }

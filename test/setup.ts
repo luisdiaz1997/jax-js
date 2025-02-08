@@ -2,7 +2,7 @@ import { expect } from "vitest";
 import { numpy as np } from "jax-js";
 
 expect.extend({
-  toBeClose(received: np.ArrayLike, expected: np.ArrayLike) {
+  toBeAllclose(received: np.ArrayLike, expected: np.ArrayLike) {
     const { isNot } = this;
     return {
       pass: np.allclose(received, expected),
