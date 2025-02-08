@@ -29,3 +29,9 @@ export const vmap = core.vmap as <F extends (...args: any[]) => JsTree<Array>>(
   f: WithArgsSubtype<F, JsTree<ArrayLike>>,
   inAxes: MapJsTree<Parameters<F>, Array, number>
 ) => F;
+
+/** Compute the Jacobian evaluated column-by-column by forward-mode AD. */
+export const jacfwd = core.jacfwd as <F extends (x: Array) => Array>(
+  f: F,
+  x: Array
+) => F;
