@@ -195,6 +195,10 @@ class ShapedArray implements AbstractValue {
     public readonly dtype: DType
   ) {}
 
+  static fromAval(aval: AbstractValue) {
+    return new ShapedArray(aval.shape, aval.dtype);
+  }
+
   get ndim() {
     return this.shape.length;
   }
@@ -791,3 +795,239 @@ export function jacfwd(f: any, x: Tracer) {
   const pushfwd = (v: Tracer) => jvp(f, [x], [v])[1];
   return vmap(pushfwd, [0])(new Array(tf.eye(size)));
 }
+
+/** Variable in a Jaxpr expression. */
+export class Var {
+  static nextId = 1; // For debugging, since JavaScript has no id() function like Python.
+
+  readonly id: number;
+  readonly aval: ShapedArray;
+
+  constructor(aval: ShapedArray) {
+    this.id = Var.nextId++;
+    this.aval = aval;
+  }
+}
+
+/** Literal in a Jaxpr expression. */
+export class Lit {
+  readonly val: Array;
+  readonly aval: ShapedArray;
+
+  constructor(val: Array | number | boolean) {
+    this.aval = ShapedArray.fromAval(getAval(val));
+    const ar = pureArray(val);
+    if (!(ar instanceof Array)) {
+      throw new TypeError("Lit only supports defined Array values");
+    }
+    this.val = ar;
+  }
+}
+
+export type Atom = Var | Lit;
+
+export type JaxprEqn = {
+  primitive: Primitive;
+  inputs: Atom[];
+  params: Record<string, any>;
+  outBinders: Var[];
+};
+
+export type Jaxpr = {
+  inBinders: Var[];
+  eqns: JaxprEqn[];
+  outs: Atom[];
+};
+
+export class JaxprType {
+  constructor(
+    readonly inTypes: ShapedArray[],
+    readonly outTypes: ShapedArray[]
+  ) {}
+
+  toString(): string {
+    const inTypes = this.inTypes.map((aval) => aval.strShort()).join(", ");
+    const outTypes = this.outTypes.map((aval) => aval.strShort()).join(", ");
+    return `(${inTypes}) -> (${outTypes})`;
+  }
+}
+
+function typecheckJaxpr(jaxpr: Jaxpr): JaxprType {
+  const env = new Set<Var>();
+
+  for (const v of jaxpr.inBinders) {
+    if (env.has(v)) {
+      throw new Error(`Duplicate variable binding: ${v}`);
+    }
+    env.add(v);
+  }
+
+  for (const eqn of jaxpr.eqns) {
+    const inTypes = eqn.inputs.map((x) => typecheckAtom(env, x));
+    const outTypes = abstractEvalRules[eqn.primitive](inTypes, eqn.params);
+    for (const [outBinder, outType] of zip(eqn.outBinders, outTypes)) {
+      if (!outType.equals(outBinder.aval)) {
+        throw new TypeError(
+          `Output binder type mismatch in ${eqn.primitive}: ${outBinder} vs ${outType}`
+        );
+      }
+      if (env.has(outBinder)) {
+        throw new Error(`Duplicate variable binding: ${outBinder}`);
+      }
+      env.add(outBinder);
+    }
+  }
+
+  const inTypes = jaxpr.inBinders.map((v) => v.aval);
+  const outTypes = jaxpr.outs.map((x) => typecheckAtom(env, x));
+  return new JaxprType(inTypes, outTypes);
+}
+
+function typecheckAtom(env: Set<Var>, x: Atom): ShapedArray {
+  if (x instanceof Var) {
+    if (!env.has(x)) {
+      throw new Error(`Unknown variable: ${x}`);
+    }
+    return x.aval;
+  } else if (x instanceof Lit) {
+    return x.aval;
+  } else {
+    throw new TypeError(`Invalid atom type: ${x}`);
+  }
+}
+
+/** Evaluate a jaxpr on an array of inputs. */
+function evalJaxpr(jaxpr: Jaxpr, args: Tracer[]): Tracer[] {
+  const env = new Map<Var, Tracer>();
+
+  const read = (x: Atom) => (x instanceof Var ? env.get(x)! : x.val);
+  const write = (v: Var, val: Tracer) => {
+    if (env.has(v)) throw new Error(`Variable already bound: ${v}`);
+    env.set(v, val);
+  };
+
+  for (const [v, arg] of zip(jaxpr.inBinders, args)) write(v, arg);
+  for (const eqn of jaxpr.eqns) {
+    const inVals = eqn.inputs.map(read);
+    const outVals = bind(eqn.primitive, inVals, eqn.params);
+    for (const [v, val] of zip(eqn.outBinders, outVals)) write(v, val);
+  }
+  return jaxpr.outs.map(read);
+}
+
+function jaxprAsFun(jaxpr: Jaxpr) {
+  return (...args: Tracer[]) => evalJaxpr(jaxpr, args);
+}
+
+class JaxprTracer extends Tracer {
+  constructor(
+    trace: Trace,
+    readonly aval: ShapedArray
+  ) {
+    super(trace);
+  }
+
+  toString(): string {
+    return `JaxprTracer(${this.aval.strShort()})`;
+  }
+}
+
+// TODO: JaxprTrace
+
+type AbstractEvalRule = (shapes: ShapedArray[], params: any) => ShapedArray[];
+
+/**
+ * Implements a NumPy-style generalized broadcast rule on two array shapes.
+ *
+ * "When operating on two arrays, NumPy compares their shapes element-wise. It starts with the
+ * trailing (i.e. rightmost) dimension and works its way left. Two dimensions are compatible when:
+ *   1. they are equal, or
+ *   2. one of them is 1."
+ *
+ * Throws a TypeError if the broadcast is not possible.
+ *
+ * <https://numpy.org/doc/stable/user/basics.broadcasting.html#general-broadcasting-rules>
+ */
+function generalBroadcast(a: number[], b: number[]): number[] {
+  const out: number[] = [];
+  let i = a.length - 1;
+  let j = b.length - 1;
+  for (; i >= 0 && j >= 0; i--, j--) {
+    const x = a[i];
+    const y = b[j];
+    if (x === y) {
+      out.push(x);
+    } else if (x === 1) {
+      out.push(y);
+    } else if (y === 1) {
+      out.push(x);
+    } else {
+      throw new TypeError(`Incompatible array broadcast shapes: ${a} vs ${b}`);
+    }
+  }
+  for (; i >= 0; i--) {
+    out.push(a[i]);
+  }
+  for (; j >= 0; j--) {
+    out.push(b[j]);
+  }
+  return out.reverse();
+}
+
+function binopAbstractEval([x, y]: ShapedArray[]) {
+  if (!(x instanceof ShapedArray) || !(y instanceof ShapedArray)) {
+    throw new TypeError("binopAbstractEval expects ShapedArray inputs");
+  }
+  if (x.dtype !== y.dtype) {
+    // TODO: Relax this restriction on dtype equality, or add automatic casts.
+    throw new TypeError(`Mismatched dtypes: ${x.dtype} vs ${y.dtype}`);
+  }
+  return [new ShapedArray(generalBroadcast(x.shape, y.shape), x.dtype)];
+}
+
+function compareAbstractEval([x, y]: ShapedArray[]) {
+  if (!(x instanceof ShapedArray) || !(y instanceof ShapedArray)) {
+    throw new TypeError("binopAbstractEval expects ShapedArray inputs");
+  }
+  if (x.dtype !== y.dtype) {
+    // TODO: Relax this restriction on dtype equality, or add automatic casts.
+    throw new TypeError(`Mismatched dtypes: ${x.dtype} vs ${y.dtype}`);
+  }
+  return [new ShapedArray(generalBroadcast(x.shape, y.shape), DType.Bool)];
+}
+
+function vectorizedUnopAbstractEval([x]: ShapedArray[]) {
+  return [ShapedArray.fromAval(x)];
+}
+
+const abstractEvalRules: Record<Primitive, AbstractEvalRule> = {
+  [Primitive.Add]: binopAbstractEval,
+  [Primitive.Mul]: binopAbstractEval,
+  [Primitive.Neg]: vectorizedUnopAbstractEval,
+  [Primitive.Sin]: vectorizedUnopAbstractEval,
+  [Primitive.Cos]: vectorizedUnopAbstractEval,
+  [Primitive.ReduceSum]([x], { axis }: { axis: number[] }) {
+    const axisSet = new Set(axis);
+    const newShape = x.shape.filter((_, i) => !axisSet.has(i));
+    return [new ShapedArray(newShape, x.dtype)];
+  },
+  [Primitive.Greater]: compareAbstractEval,
+  [Primitive.Less]: compareAbstractEval,
+  [Primitive.Transpose]([x], { perm }: { perm?: number[] }) {
+    if (perm === undefined) {
+      perm = [...JsArray(x.shape.length).keys()].reverse();
+    }
+    return [
+      new ShapedArray(
+        perm.map((i) => x.shape[i]),
+        x.dtype
+      ),
+    ];
+  },
+  [Primitive.Broadcast](
+    [x],
+    { shape, axes }: { shape: number[]; axes: number[] }
+  ) {
+    return [new ShapedArray(shape, x.dtype)];
+  },
+};
