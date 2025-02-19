@@ -119,8 +119,8 @@ function newMain(
 }
 
 /**
- * Set the current dynamic trace, which stashes the current interpreter stack and acts temporarily
- * as the bottom of the stack. Use this like:
+ * Set the current dynamic trace, which stashes the current interpreter stack
+ * and acts temporarily as the bottom of the stack. Use this like:
  * `using _dynamic = newDynamic(main);`
  */
 function newDynamic(main: MainTrace): Disposable {
@@ -255,8 +255,9 @@ class ConcreteArray extends ShapedArray {
 /**
  * Equivalent to `jnp.Array` from JAX, a tensor type.
  *
- * Not to be confused with the JavaScript "Array" constructor. Avoid importing this into your code's
- * namespace if you're already using the JavaScript "Array" type by name.
+ * Not to be confused with the JavaScript "Array" constructor. Avoid importing
+ * this into your code's namespace if you're already using the JavaScript
+ * "Array" type by name.
  */
 export class Array extends Tracer {
   readonly dtype: DType;
@@ -690,7 +691,7 @@ function broadcastBatcher(op: (...x: Tracer[]) => Tracer) {
       return [[op(...args)], [null]];
     }
     if (
-      // If only agreeing batch dims, as well as scalars, just call the primitive.
+      // If only agreeing batch dims, or scalars, just call the primitive.
       zip(args, dims).every(
         ([x, d]) =>
           ndim(x) === 0 ||
@@ -1164,8 +1165,9 @@ type AbstractEvalRule = (shapes: ShapedArray[], params: any) => ShapedArray[];
 /**
  * Implements a NumPy-style generalized broadcast rule on two array shapes.
  *
- * "When operating on two arrays, NumPy compares their shapes element-wise. It starts with the
- * trailing (i.e. rightmost) dimension and works its way left. Two dimensions are compatible when:
+ * "When operating on two arrays, NumPy compares their shapes element-wise. It
+ * starts with the trailing (i.e. rightmost) dimension and works its way left.
+ * Two dimensions are compatible when:
  *   1. they are equal, or
  *   2. one of them is 1."
  *
