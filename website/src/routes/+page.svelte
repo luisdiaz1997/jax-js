@@ -1,7 +1,15 @@
 <script lang="ts">
   import { SplitPane } from "@rich_harris/svelte-split-pane";
   import type { Plugin } from "@rollup/browser";
-  import { ArrowRightIcon, PaletteIcon, PlayIcon } from "lucide-svelte";
+  import {
+    AlertTriangleIcon,
+    ArrowRightIcon,
+    ChevronRightIcon,
+    InfoIcon,
+    PaletteIcon,
+    PlayIcon,
+    X,
+  } from "lucide-svelte";
 
   import ReplEditor from "$lib/repl/ReplEditor.svelte";
 
@@ -57,8 +65,7 @@ const y = np.dot(X, np.array([1, 2])).add(3);
       replEditor.setText(formatted);
       replEditor.setCursorOffset(cursorOffset);
     } catch (e: any) {
-      // TODO: Display the error in the console.
-      alert(e.toString());
+      mockConsole.error(e);
     }
   }
 
@@ -104,24 +111,119 @@ const y = np.dot(X, np.array([1, 2])).add(3);
       },
     };
 
-    // Use @rollup/browser to bundle the code.
-    const bundle = await rollup({
-      input: "index.ts",
-      plugins: [typescriptPlugin, virtualPlugin],
-      external: ["@jax-js/core"],
-    });
+    try {
+      mockConsole.clear();
 
-    const { output } = await bundle.generate({
-      file: "bundle.js",
-      format: "iife",
-      globals: {
-        "@jax-js/core": "JAX",
-      },
-    });
+      // Use @rollup/browser to bundle the code.
+      const bundle = await rollup({
+        input: "index.ts",
+        plugins: [typescriptPlugin, virtualPlugin],
+        external: ["@jax-js/core"],
+      });
 
-    const bundledCode = output[0].code;
-    new Function("JAX", bundledCode)(jax);
+      const { output } = await bundle.generate({
+        file: "bundle.js",
+        format: "iife",
+        globals: {
+          "@jax-js/core": "JAX",
+        },
+      });
+
+      const bundledCode = output[0].code;
+      new Function("JAX", "console", bundledCode)(jax, mockConsole);
+    } catch (e: any) {
+      mockConsole.error(e);
+    }
   }
+
+  type ConsoleLine = {
+    level: "log" | "info" | "warn" | "error";
+    data: string[];
+    time: number;
+  };
+
+  let consoleLines: ConsoleLine[] = $state([]);
+
+  // Intercepted methods similar to console.log().
+  const consoleMethods = [
+    "clear",
+    "error",
+    "info",
+    "log",
+    "time",
+    "timeEnd",
+    "timeLog",
+    "trace",
+    "warn",
+  ] as const;
+  const consoleTimers = new Map<string, number>();
+
+  function handleMockConsole(
+    method: (typeof consoleMethods)[number],
+    ...args: any[]
+  ) {
+    if (
+      method === "log" ||
+      method === "info" ||
+      method === "warn" ||
+      method === "error"
+    ) {
+      consoleLines.push({
+        level: method,
+        data: args.map((x) =>
+          typeof x === "string"
+            ? x
+            : x instanceof Error
+              ? x.toString()
+              : JSON.stringify(x, null, 2),
+        ),
+        time: Date.now(),
+      });
+    } else if (method === "clear") {
+      consoleLines = [];
+    } else if (method === "trace") {
+      consoleLines.push({
+        level: "error",
+        data: ["Received stack trace, see console for details."],
+        time: Date.now(),
+      });
+    } else if (method === "time") {
+      consoleTimers.set(args[0], performance.now());
+    } else if (method === "timeLog") {
+      const start = consoleTimers.get(args[0]);
+      if (start !== undefined) {
+        const elapsed = performance.now() - start;
+        consoleLines.push({
+          level: "log",
+          data: [`${args[0]}: ${elapsed}ms`],
+          time: Date.now(),
+        });
+      }
+    } else if (method === "timeEnd") {
+      const start = consoleTimers.get(args[0]);
+      if (start !== undefined) {
+        const elapsed = Date.now() - start;
+        consoleLines.push({
+          level: "log",
+          data: [`${args[0]}: ${elapsed}ms - timer ended`],
+          time: Date.now(),
+        });
+        consoleTimers.delete(args[0]);
+      }
+    }
+  }
+
+  const mockConsole = new Proxy(console, {
+    get(target, prop, receiver) {
+      if (consoleMethods.some((m) => m === prop)) {
+        return (...args: any[]) => {
+          handleMockConsole(prop as any, ...args);
+          Reflect.get(target, prop, receiver)(...args);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
 </script>
 
 <div class="h-dvh">
@@ -212,22 +314,42 @@ const y = np.dot(X, np.array([1, 2])).add(3);
           </div>
         {/snippet}
         {#snippet b()}
-          <section class="p-4 !overflow-y-auto">
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-            <div class="text-sm font-mono">hello</div>
-          </section>
+          <div class="px-4 py-2 !overflow-y-auto">
+            <p class="text-gray-400 text-sm mb-2 select-none">
+              Console{#if consoleLines.length === 0}<span>{" (empty)"}</span
+                >{/if}
+            </p>
+            <div class="flex flex-col">
+              {#each consoleLines as line, i (i)}
+                <div
+                  class={[
+                    "py-1 px-2 border-t flex items-start gap-x-2",
+                    line.level === "error"
+                      ? "border-red-200 bg-red-50"
+                      : line.level === "warn"
+                        ? "border-yellow-200 bg-yellow-50"
+                        : "border-gray-200",
+                  ]}
+                >
+                  {#if line.level === "log"}
+                    <ChevronRightIcon size={18} class="text-gray-300" />
+                  {:else if line.level === "info"}
+                    <InfoIcon size={18} class="text-blue-500" />
+                  {:else if line.level === "warn"}
+                    <AlertTriangleIcon size={18} class="text-yellow-500" />
+                  {:else if line.level === "error"}
+                    <X size={18} class="text-red-500" />
+                  {/if}
+                  <p class="text-sm font-mono whitespace-pre-wrap">
+                    {line.data.join(" ")}
+                  </p>
+                  <p class="ml-auto shrink-0 text-sm font-mono text-gray-400">
+                    [{new Date(line.time).toLocaleTimeString()}]
+                  </p>
+                </div>
+              {/each}
+            </div>
+          </div>
         {/snippet}
       </SplitPane>
     {/snippet}
