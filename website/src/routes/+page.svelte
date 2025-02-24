@@ -6,6 +6,7 @@
     ArrowRightIcon,
     ChevronRightIcon,
     InfoIcon,
+    LoaderIcon,
     PaletteIcon,
     PlayIcon,
     X,
@@ -83,6 +84,9 @@ const y = np.dot(X, np.array([1, 2])).add(3);
   }
 
   async function handleRun() {
+    if (running) return;
+    running = true;
+
     const jax = await import("@jax-js/core");
     const ts = await import("typescript");
     const { rollup } = await import("@rollup/browser");
@@ -134,18 +138,35 @@ const y = np.dot(X, np.array([1, 2])).add(3);
         external: ["@jax-js/core"],
       });
 
+      // We use the "system" format because it allows you to use async/await.
+      // https://rollupjs.org/repl/
       const { output } = await bundle.generate({
         file: "bundle.js",
-        format: "iife",
-        globals: {
-          "@jax-js/core": "JAX",
-        },
+        format: "system",
       });
 
-      const bundledCode = output[0].code;
-      new Function("JAX", "console", bundledCode)(jax, mockConsole);
+      const header = `const System = { register(externals, f) {
+        const { execute, setters } = f();
+        for (let i = 0; i < externals.length; i++) {
+          setters[i](_MODULES[externals[i]]);
+        }
+        this.f = execute;
+      } };`;
+      const trailer = `;await (async () => System.f())()`;
+      const bundledCode = header + output[0].code + trailer;
+
+      // AsyncFunction constructor, analogous to Function.
+      const AsyncFunction: typeof Function = async function () {}
+        .constructor as any;
+
+      await new AsyncFunction("_MODULES", "console", bundledCode)(
+        { "@jax-js/core": jax },
+        mockConsole,
+      );
     } catch (e: any) {
       mockConsole.error(e);
+    } finally {
+      running = false;
     }
   }
 
@@ -156,6 +177,7 @@ const y = np.dot(X, np.array([1, 2])).add(3);
   };
 
   let consoleLines: ConsoleLine[] = $state([]);
+  let running = $state(false);
 
   // Intercepted methods similar to console.log().
   const consoleMethods = [
@@ -299,14 +321,15 @@ const y = np.dot(X, np.array([1, 2])).add(3);
           <div class="flex flex-col min-w-0">
             <div class="px-4 py-2 flex items-center gap-1">
               <button
-                class="bg-emerald-100 hover:bg-emerald-200 active:scale-105 transition-all rounded-md text-sm px-3 py-0.5 flex items-center"
+                class="bg-emerald-100 hover:bg-emerald-200 active:scale-105 transition-all rounded-md text-sm px-3 py-0.5 flex items-center disabled:opacity-50"
                 onclick={handleRun}
+                disabled={running}
               >
                 <PlayIcon size={14} class="mr-1.5" />
                 Run
               </button>
               <button
-                class="hover:bg-gray-100 active:scale-105 transition-all rounded-md text-sm px-3 py-0.5 flex items-center"
+                class="hover:bg-gray-100 active:scale-105 transition-all rounded-md text-sm px-3 py-0.5 flex items-center disabled:opacity-50"
                 onclick={handleFormat}
               >
                 <PaletteIcon size={14} class="mr-1.5" />
@@ -329,8 +352,15 @@ const y = np.dot(X, np.array([1, 2])).add(3);
         {#snippet b()}
           <div class="px-4 py-2 !overflow-y-auto">
             <p class="text-gray-400 text-sm mb-2 select-none">
-              Console{#if consoleLines.length === 0}<span>{" (empty)"}</span
-                >{/if}
+              Console
+              {#if running}
+                <LoaderIcon
+                  size={16}
+                  class="inline-block animate-spin ml-1 mb-[3px]"
+                />
+              {:else if consoleLines.length === 0}
+                <span>(empty)</span>
+              {/if}
             </p>
             <div class="flex flex-col">
               {#each consoleLines as line, i (i)}
