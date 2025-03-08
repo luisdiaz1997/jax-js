@@ -16,6 +16,16 @@ export function zip<T, U>(xs: T[], ys: U[]): [T, U][] {
   return xs.map((x, i) => [x, ys[i]]);
 }
 
+export function rep<T>(
+  length: number,
+  value: T,
+): (T extends (...args: any) => infer R ? R : T)[] {
+  if (value instanceof Function) {
+    return new Array(length).fill(0).map((_, i) => value(i));
+  }
+  return new Array(length).fill(value);
+}
+
 /** Check if two objects are deep equal. */
 export function deepEqual(a: any, b: any): boolean {
   if (a === b) {
