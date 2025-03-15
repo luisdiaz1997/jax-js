@@ -1,5 +1,6 @@
 import { suite, test, expect } from "vitest";
 import { ShapeTracker, View } from "./shape";
+import { AluExp, DType } from "./alu";
 
 suite("View.create()", () => {
   test("creates a contiguous view with default strides", () => {
@@ -305,5 +306,50 @@ suite("ShapeTracker", () => {
       flipped.views[0],
       View.create([3, 2]),
     ]);
+  });
+});
+
+suite("toAluExp()", () => {
+  test("converts view to expression", () => {
+    let v = View.create([200]);
+    let [exp, vexp] = v.toAluExp([AluExp.special(DType.Int32, "x", 200)]);
+    expect(vexp.resolve()).toBe(true);
+    expect(exp.evaluate({ x: 42 })).toEqual(42);
+
+    v = View.create([20, 10]);
+    [exp, vexp] = v.toAluExp([
+      AluExp.special(DType.Int32, "x", 20),
+      AluExp.special(DType.Int32, "y", 10),
+    ]);
+    expect(vexp.resolve()).toBe(true);
+    expect(exp.evaluate({ x: 5, y: 3 })).toEqual(53);
+    expect(exp.evaluate({ x: 15, y: 3 })).toEqual(153);
+
+    v = v.flip([true, false]);
+    [exp, vexp] = v.toAluExp([
+      AluExp.special(DType.Int32, "x", 20),
+      AluExp.special(DType.Int32, "y", 10),
+    ]);
+    expect(vexp.resolve()).toBe(true);
+    expect(exp.evaluate({ x: 5, y: 3 })).toEqual(143);
+    expect(exp.evaluate({ x: 15, y: 3 })).toEqual(43);
+  });
+
+  test("works with padding", () => {
+    let v = View.create([3, 3]).pad([
+      [1, 1],
+      [2, 3],
+    ]);
+    expect(v.shape).toEqual([5, 8]);
+    let [exp, vexp] = v.toAluExp([
+      AluExp.special(DType.Int32, "x", 5),
+      AluExp.special(DType.Int32, "y", 8),
+    ]);
+    expect(vexp.evaluate({ x: 0, y: 0 })).toBe(false);
+    expect(vexp.evaluate({ x: 1, y: 0 })).toBe(false);
+    expect(vexp.evaluate({ x: 1, y: 2 })).toBe(true);
+    expect(vexp.evaluate({ x: 3, y: 4 })).toBe(true);
+    expect(vexp.evaluate({ x: 4, y: 4 })).toBe(false);
+    expect(vexp.evaluate({ x: 3, y: 5 })).toBe(false);
   });
 });

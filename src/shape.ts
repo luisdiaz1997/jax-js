@@ -19,6 +19,7 @@
  * This file is a bit longer than the original, since Python is more concise.
  */
 
+import { AluExp, DType } from "./alu";
 import { deepEqual, idiv, isPermutation, rep, zip } from "./utils";
 
 type Pair = [number, number];
@@ -239,6 +240,31 @@ export class View {
           deepEqual(this.strides, defaultStrides(this.shape)));
     }
     return this.#contiguous;
+  }
+
+  /** Produce an AluExp for evaluating this view at an index. */
+  toAluExp(idxs: AluExp[]): [AluExp, AluExp] {
+    let iexpr = AluExp.i32(this.offset);
+    let vexpr = AluExp.bool(true);
+    for (let i = 0; i < this.ndim; i++) {
+      const idx = idxs[i];
+      if (this.shape[i] !== 1 && this.strides[i] !== 0) {
+        iexpr = AluExp.add(iexpr, AluExp.mul(idx, AluExp.i32(this.strides[i])));
+      }
+      if (this.mask) {
+        if (this.mask[i][0] !== 0)
+          vexpr = AluExp.mul(
+            vexpr,
+            AluExp.cmplt(idx, AluExp.i32(this.mask[i][0])).not(),
+          );
+        if (this.mask[i][1] !== this.shape[i])
+          vexpr = AluExp.mul(
+            vexpr,
+            AluExp.cmplt(idx, AluExp.i32(this.mask[i][1])),
+          );
+      }
+    }
+    return [iexpr, vexpr];
   }
 
   /**
@@ -558,7 +584,7 @@ export class View {
  * Find position of `offset` in each dimension within an existing shape. Like
  * `numpy.unravel_index` in behavior.
  */
-function unravel(shape: number[], offset: number): number[] {
+export function unravel(shape: number[], offset: number): number[] {
   let acc = 1;
   const idxs: number[] = [];
   for (let i = shape.length - 1; i >= 0; i--) {
@@ -567,6 +593,18 @@ function unravel(shape: number[], offset: number): number[] {
     acc *= d;
   }
   return idxs.reverse();
+}
+
+/** Generate a list of AluExp for computing unravel(). */
+export function unravelAlu(shape: number[], offset: AluExp): AluExp[] {
+  let acc = 1;
+  const idxs: AluExp[] = [];
+  for (let i = shape.length - 1; i >= 0; i--) {
+    const d = shape[i];
+    idxs.push(AluExp.mod(AluExp.idiv(offset, AluExp.i32(acc)), AluExp.i32(d)));
+    acc *= d;
+  }
+  return idxs;
 }
 
 /**

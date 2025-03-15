@@ -6,6 +6,7 @@ import "@tensorflow/tfjs-core/dist/register_all_gradients";
 import "@tensorflow/tfjs-backend-cpu";
 import "@tensorflow/tfjs-backend-webgl";
 import "@tensorflow/tfjs-backend-webgpu";
+import { DType } from "./alu";
 import { DEBUG, deepEqual, range, toposort, unzip2, zip } from "./utils";
 import {
   JsTreeDef,
@@ -15,13 +16,6 @@ import {
 import { PPrint } from "./pprint";
 
 tf.setBackend("cpu"); // TODO: support multiple devices, move arrays between devices
-
-export enum DType {
-  Float32 = "float32",
-  Int32 = "int32",
-  Bool = "bool",
-  Complex64 = "complex64",
-}
 
 export enum Primitive {
   Add = "add",
