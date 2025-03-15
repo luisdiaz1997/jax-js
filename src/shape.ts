@@ -604,7 +604,7 @@ export function unravelAlu(shape: number[], offset: AluExp): AluExp[] {
     idxs.push(AluExp.mod(AluExp.idiv(offset, AluExp.i32(acc)), AluExp.i32(d)));
     acc *= d;
   }
-  return idxs;
+  return idxs.reverse();
 }
 
 /**
@@ -648,6 +648,19 @@ export class ShapeTracker {
 
   get size(): number {
     return this.views[this.views.length - 1].size;
+  }
+
+  toAluExp(idxs: AluExp[]): [AluExp, AluExp] {
+    let [iexpr, vexpr] = this.views[this.views.length - 1]
+      .minify()
+      .toAluExp(idxs);
+    for (let i = this.views.length - 2; i >= 0; i--) {
+      const view = this.views[i].minify();
+      const exprs = view.toAluExp(unravelAlu(view.shape, iexpr));
+      iexpr = exprs[0];
+      vexpr = AluExp.mul(vexpr, exprs[1]);
+    }
+    return [iexpr, vexpr];
   }
 
   simplify(): ShapeTracker {

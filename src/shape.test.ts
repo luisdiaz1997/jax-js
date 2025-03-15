@@ -310,7 +310,7 @@ suite("ShapeTracker", () => {
 });
 
 suite("toAluExp()", () => {
-  test("converts view to expression", () => {
+  test("converts View to expression", () => {
     let v = View.create([200]);
     let [exp, vexp] = v.toAluExp([AluExp.special(DType.Int32, "x", 200)]);
     expect(vexp.resolve()).toBe(true);
@@ -351,5 +351,36 @@ suite("toAluExp()", () => {
     expect(vexp.evaluate({ x: 3, y: 4 })).toBe(true);
     expect(vexp.evaluate({ x: 4, y: 4 })).toBe(false);
     expect(vexp.evaluate({ x: 3, y: 5 })).toBe(false);
+  });
+
+  test("converts ShapeTracker to expression", () => {
+    let st = ShapeTracker.fromShape([2, 2]);
+    // 01
+    // 23
+    st = st
+      .pad([
+        [1, 1],
+        [1, 1],
+      ])
+      .flip([false, true]);
+    // ....
+    // .10.
+    // .32.
+    // ....
+    st = st.reshape([16]);
+    // .....10..32.....
+    console.log(st);
+
+    const [exp, vexp] = st.toAluExp([AluExp.special(DType.Int32, "x", 16)]);
+    expect(exp.evaluate({ x: 5 })).toEqual(1);
+    expect(exp.evaluate({ x: 6 })).toEqual(0);
+    expect(exp.evaluate({ x: 9 })).toEqual(3);
+    expect(exp.evaluate({ x: 10 })).toEqual(2);
+
+    for (let i = 0; i < 16; i++) {
+      expect(vexp.evaluate({ x: i })).toBe(
+        i === 5 || i === 6 || i === 9 || i === 10,
+      );
+    }
   });
 });
