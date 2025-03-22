@@ -1,6 +1,6 @@
 /** @file Generic programming utilities with no dependencies on library code. */
 
-export const DEBUG: number = 0;
+export const DEBUG: number = 2;
 
 export function unzip2<T, U>(pairs: Iterable<[T, U]>): [T[], U[]] {
   const lst1: T[] = [];
