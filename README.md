@@ -12,12 +12,18 @@ npm test
 
 - [x] It works!
 - [x] Demos: Browser REPL / editor
-- [ ] Demos: Navier-Stokes, neural networks, statistics
-- [ ] We figure out the `dispose()` / linear types stuff
+- [x] First custom kernel
+- [ ] Custom WebGPU backend, removing tfjs dependency
+  - [ ] Low-level operations
+  - [ ] Create `class Array {}` wrappers
+  - [ ] Reduction operations
+  - [ ] "Group" optimizations
+  - [ ] "Unroll" optimizations
+  - [ ] "Upcast" optimizations (i.e., `vec4<f32>`)
+- [ ] We figure out the `dispose()` / refcount / linear types stuff
 - [ ] Device switching with `.to()` between webgl/webgpu/cpu/wasm
-- [ ] First custom kernel
+- [ ] Demos: Navier-Stokes, neural networks, statistics
+- [ ] `jit()` support via Jaxprs and kernel fusion
+- [ ] Other dtypes like int32 and bool
 - [ ] numpy/jax API compatibility table
-- [ ] Convert Jaxprs into a tree data structure
-- [ ] Pattern matchers for kernel fusion
-- [ ] Kernel codegen, or synthesis
 - [ ] Import tfjs models
