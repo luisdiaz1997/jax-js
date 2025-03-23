@@ -217,14 +217,14 @@ function pipelineSource(nargs: number, exp: AluExp): string {
     if (AluGroup.Binary.has(op) || AluGroup.Compare.has(op)) {
       const a = gen(src[0]);
       const b = gen(src[1]);
-      if (op === AluOp.Add) source = `${a} + ${b}`;
-      else if (op === AluOp.Sub) source = `${a} - ${b}`;
-      else if (op === AluOp.Mul) source = `${a} * ${b}`;
+      if (op === AluOp.Add) source = `(${a} + ${b})`;
+      else if (op === AluOp.Sub) source = `(${a} - ${b})`;
+      else if (op === AluOp.Mul) source = `(${a} * ${b})`;
       else if (op === AluOp.Idiv)
-        source = dtype === DType.Int32 ? `${a} / ${b}` : `floor(${a} / ${b})`;
-      else if (op === AluOp.Mod) source = `${a} % ${b}`;
-      else if (op === AluOp.Cmplt) source = `${a} < ${b}`;
-      else if (op === AluOp.Cmpne) source = `${a} != ${b}`;
+        source = dtype === DType.Int32 ? `(${a} / ${b})` : `floor(${a} / ${b})`;
+      else if (op === AluOp.Mod) source = `(${a} % ${b})`;
+      else if (op === AluOp.Cmplt) source = `(${a} < ${b})`;
+      else if (op === AluOp.Cmpne) source = `(${a} != ${b})`;
     } else if (AluGroup.Unary.has(op)) {
       const a = gen(src[0]);
       if (op === AluOp.Sin) source = `sin(${a})`;

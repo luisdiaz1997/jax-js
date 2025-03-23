@@ -97,6 +97,18 @@ export class AluExp {
       }
     }
 
+    // x + (-1 * y) => x - y
+    // x - (-1 * y) => x + y
+    if ((op === AluOp.Add || op === AluOp.Sub) && src[1].op === AluOp.Mul) {
+      const [a, b] = src[1].src;
+      const opNeg = op === AluOp.Add ? AluOp.Sub : AluOp.Add;
+      if (a.op === AluOp.Const && a.arg === -1) {
+        return new AluExp(opNeg, this.dtype, [src[0], b]);
+      } else if (b.op === AluOp.Const && b.arg === -1) {
+        return new AluExp(opNeg, this.dtype, [src[0], a]);
+      }
+    }
+
     // Select statement.
     if (op === AluOp.Where) {
       if (src[0].op === AluOp.Const) return src[src[0].arg ? 1 : 2];
