@@ -6,7 +6,6 @@ const JsArray = globalThis.Array;
 
 class PendingExecute {
   submitted = false;
-  #controller: AbortController | null = null;
   #promise: Promise<void> | null = null;
 
   constructor(
@@ -21,21 +20,20 @@ class PendingExecute {
       await this.#promise;
       return;
     }
-    this.#controller = new AbortController();
-    this.#promise = backend.execute(
-      this.exp,
-      this.inputs,
-      this.outputs,
-      this.#controller.signal,
-    );
-    await this.#promise;
-    this.submitted = true;
+    this.#promise = (async () => {
+      const exe = await backend.prepare(this.inputs.length, this.exp);
+      // Check `this.submitted` again, since it may race with `submitSync`.
+      if (!this.submitted) {
+        backend.dispatch(exe, this.inputs, this.outputs);
+        this.submitted = true;
+      }
+    })();
   }
 
   submitSync(backend: Backend) {
     if (this.submitted) return;
-    if (this.#controller) this.#controller.abort();
-    backend.executeSync(this.exp, this.inputs, this.outputs);
+    const exe = backend.prepareSync(this.inputs.length, this.exp);
+    backend.dispatch(exe, this.inputs, this.outputs);
     this.submitted = true;
   }
 }
