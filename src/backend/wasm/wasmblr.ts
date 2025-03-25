@@ -129,7 +129,7 @@ class Memory {
 // CodeGenerator class
 ////////////////////////////////////////
 
-// I32, F32, V128, Void
+// I32, F32, V128, Void, I32x4, F32x4
 interface Type {
   typeId: number;
 }
@@ -140,6 +140,8 @@ export class CodeGenerator {
   i32: I32;
   f32: F32;
   v128: V128;
+  i32x4: I32x4;
+  f32x4: F32x4;
   memory: Memory;
   void_ = { typeId: 0x40 };
 
@@ -154,6 +156,8 @@ export class CodeGenerator {
     this.i32 = new I32(this);
     this.f32 = new F32(this);
     this.v128 = new V128(this);
+    this.i32x4 = new I32x4(this);
+    this.f32x4 = new F32x4(this);
     this.memory = new Memory(this);
   }
 
@@ -170,7 +174,7 @@ export class CodeGenerator {
     this.emit(type.typeId);
   }
   if_(type: Type) {
-    assert(this.pop() === this.i32, "if_: expected i32");
+    assert(this.pop().typeId === this.i32.typeId, "if_: expected i32");
     this.emit(0x04);
     this.emit(type.typeId);
   }
@@ -182,7 +186,7 @@ export class CodeGenerator {
     this.emit(encode_unsigned(labelidx));
   }
   br_if(labelidx: number) {
-    assert(this.pop() === this.i32, "br_if: expected i32");
+    assert(this.pop().typeId === this.i32.typeId, "br_if: expected i32");
     this.emit(0x0d);
     this.emit(encode_unsigned(labelidx));
   }
@@ -405,7 +409,10 @@ class Local {
       idx < input_types.length
         ? input_types[idx]
         : this.cg.locals()[idx - input_types.length];
-    assert(expected_type === t, "can't set local to this value (wrong type)");
+    assert(
+      expected_type.typeId === t.typeId,
+      "can't set local to this value (wrong type)",
+    );
     this.cg.emit(0x21);
     this.cg.emit(encode_unsigned(idx));
   }
@@ -416,7 +423,10 @@ class Local {
       idx < input_types.length
         ? input_types[idx]
         : this.cg.locals()[idx - input_types.length];
-    assert(expected_type === t, "can't tee local to this value (wrong type)");
+    assert(
+      expected_type.typeId === t.typeId,
+      "can't tee local to this value (wrong type)",
+    );
     this.cg.emit(0x22);
     this.cg.emit(encode_unsigned(idx));
     this.cg.push(expected_type);
@@ -432,7 +442,7 @@ function UNARY_OP(
   return function (this: any) {
     const t = this.cg.pop();
     assert(
-      t === this.cg[in_type],
+      t.typeId === this.cg[in_type].typeId,
       `invalid type for ${op} (${in_type} -> ${out_type})`,
     );
     this.cg.emit(opcode);
@@ -451,7 +461,8 @@ function BINARY_OP(
     const b = this.cg.pop();
     const a = this.cg.pop();
     assert(
-      a === this.cg[type_a] && b === this.cg[type_b],
+      a.typeId === this.cg[type_a].typeId &&
+        b.typeId === this.cg[type_b].typeId,
       `invalid type for ${op} (${type_a}, ${type_b} -> ${out_type})`,
     );
     this.cg.emit(opcode);
@@ -462,7 +473,7 @@ function BINARY_OP(
 function LOAD_OP(op: string, opcode: number, out_type: string) {
   return function (this: any, alignment: number = 1, offset: number = 0) {
     const idx_type = this.cg.pop();
-    assert(idx_type === this.cg.i32, `invalid type for ${op}`);
+    assert(idx_type.typeId === this.cg.i32.typeId, `invalid type for ${op}`);
     this.cg.emit(opcode);
     this.cg.emit(encode_unsigned(alignment));
     this.cg.emit(encode_unsigned(offset));
@@ -470,11 +481,15 @@ function LOAD_OP(op: string, opcode: number, out_type: string) {
   };
 }
 
-function STORE_OP(op: string, opcode: number) {
+function STORE_OP(op: string, opcode: number, in_type: string) {
   return function (this: any, alignment: number = 1, offset: number = 0) {
     const val_type = this.cg.pop();
     const idx_type = this.cg.pop();
-    assert(idx_type === this.cg.i32, `invalid type for ${op}`);
+    assert(
+      val_type.typeId === this.cg[in_type].typeId,
+      `invalid value type for ${op} (${in_type})`,
+    );
+    assert(idx_type.typeId === this.cg.i32.typeId, `invalid type for ${op}`);
     this.cg.emit(opcode);
     this.cg.emit(encode_unsigned(alignment));
     this.cg.emit(encode_unsigned(offset));
@@ -530,9 +545,9 @@ class I32 {
   load8_u = LOAD_OP("load8_u", 0x2d, "i32");
   load16_s = LOAD_OP("load16_s", 0x2e, "i32");
   load16_u = LOAD_OP("load16_u", 0x2f, "i32");
-  store = STORE_OP("store", 0x36);
-  store8 = STORE_OP("store8", 0x3a);
-  store16 = STORE_OP("store16", 0x3b);
+  store = STORE_OP("store", 0x36, "i32");
+  store8 = STORE_OP("store8", 0x3a, "i32");
+  store16 = STORE_OP("store16", 0x3b, "i32");
 }
 
 ////////////////////////////////////////
@@ -577,7 +592,7 @@ class F32 {
   max = BINARY_OP("max", 0x97, "f32", "f32", "f32");
   copysign = BINARY_OP("copysign", 0x98, "f32", "f32", "f32");
   load = LOAD_OP("load", 0x2a, "f32");
-  store = STORE_OP("store", 0x38);
+  store = STORE_OP("store", 0x38, "f32");
 }
 
 function VECTOR_OP(
@@ -590,7 +605,7 @@ function VECTOR_OP(
     for (const in_type of in_types) {
       const actual_type = this.cg.pop();
       assert(
-        actual_type === this.cg[in_type],
+        actual_type.typeId === this.cg[in_type].typeId,
         `invalid type for ${op} (${in_types} -> ${out_type})`,
       );
     }
@@ -611,7 +626,7 @@ function VECTOR_OPL(
     for (const in_type of in_types) {
       const actual_type = this.cg.pop();
       assert(
-        actual_type === this.cg[in_type],
+        actual_type.typeId === this.cg[in_type].typeId,
         `invalid type for ${op} (${in_types} -> ${out_type})`,
       );
     }
@@ -625,7 +640,7 @@ function VECTOR_OPL(
 function VECTOR_LOAD_OP(op: string, vopcode: number) {
   return function (this: any, alignment: number = 1, offset: number = 0) {
     const idx_type = this.cg.pop();
-    assert(idx_type === this.cg.i32, `invalid type for ${op}`);
+    assert(idx_type.typeId === this.cg.i32.typeId, `invalid type for ${op}`);
     this.cg.emit(0xfd);
     this.cg.emit(encode_unsigned(vopcode));
     this.cg.emit(encode_unsigned(alignment));
@@ -634,7 +649,6 @@ function VECTOR_LOAD_OP(op: string, vopcode: number) {
   };
 }
 
-// prettier-ignore
 class V128 {
   constructor(readonly cg: CodeGenerator) {}
   get typeId(): number {
@@ -649,39 +663,14 @@ class V128 {
 
   store(alignment: number = 1, offset: number = 0) {
     const val_type = this.cg.pop();
-    assert(val_type === this.cg.v128, `invalid type for store`);
+    assert(val_type.typeId === this.cg.v128.typeId, `invalid type for store`);
     const idx_type = this.cg.pop();
-    assert(idx_type === this.cg.i32, `invalid type for store`);
+    assert(idx_type.typeId === this.cg.i32.typeId, `invalid type for store`);
     this.cg.emit(0xfd);
     this.cg.emit(encode_unsigned(0x0b));
     this.cg.emit(encode_unsigned(alignment));
     this.cg.emit(encode_unsigned(offset));
   }
-
-  i32x4_splat = VECTOR_OP("i32x4_splat", 0x11, ["i32"], "v128");
-  f32x4_splat = VECTOR_OP("f32x4_splat", 0x13, ["f32"], "v128");
-  i32x4_extract_lane = VECTOR_OPL("i32x4_extract_lane", 0x1b, ["v128"], "i32");
-  i32x4_replace_lane = VECTOR_OPL("i32x4_replace_lane", 0x1c, ["i32", "v128"], "v128");
-  f32x4_extract_lane = VECTOR_OPL("f32x4_extract_lane", 0x1f, ["v128"], "f32");
-  f32x4_replace_lane = VECTOR_OPL("f32x4_replace_lane", 0x20, ["f32", "v128"], "v128");
-
-  i32x4_eq = VECTOR_OP("i32x4_eq", 0x37, ["v128", "v128"], "v128");
-  i32x4_ne = VECTOR_OP("i32x4_ne", 0x38, ["v128", "v128"], "v128");
-  i32x4_lt_s = VECTOR_OP("i32x4_lt_s", 0x39, ["v128", "v128"], "v128");
-  i32x4_lt_u = VECTOR_OP("i32x4_lt_u", 0x3a, ["v128", "v128"], "v128");
-  i32x4_gt_s = VECTOR_OP("i32x4_gt_s", 0x3b, ["v128", "v128"], "v128");
-  i32x4_gt_u = VECTOR_OP("i32x4_gt_u", 0x3c, ["v128", "v128"], "v128");
-  i32x4_le_s = VECTOR_OP("i32x4_le_s", 0x3d, ["v128", "v128"], "v128");
-  i32x4_le_u = VECTOR_OP("i32x4_le_u", 0x3e, ["v128", "v128"], "v128");
-  i32x4_ge_s = VECTOR_OP("i32x4_ge_s", 0x3f, ["v128", "v128"], "v128");
-  i32x4_ge_u = VECTOR_OP("i32x4_ge_u", 0x40, ["v128", "v128"], "v128");
-
-  f32x4_eq = VECTOR_OP("f32x4_eq", 0x41, ["v128", "v128"], "v128");
-  f32x4_ne = VECTOR_OP("f32x4_ne", 0x42, ["v128", "v128"], "v128");
-  f32x4_lt = VECTOR_OP("f32x4_lt", 0x43, ["v128", "v128"], "v128");
-  f32x4_gt = VECTOR_OP("f32x4_gt", 0x44, ["v128", "v128"], "v128");
-  f32x4_le = VECTOR_OP("f32x4_le", 0x45, ["v128", "v128"], "v128");
-  f32x4_ge = VECTOR_OP("f32x4_ge", 0x46, ["v128", "v128"], "v128");
 
   not = VECTOR_OP("not", 0x4d, ["v128"], "v128");
   and = VECTOR_OP("and", 0x4e, ["v128", "v128"], "v128");
@@ -690,36 +679,66 @@ class V128 {
   xor = VECTOR_OP("xor", 0x51, ["v128", "v128"], "v128");
   bitselect = VECTOR_OP("bitselect", 0x52, ["v128", "v128", "v128"], "v128");
   any_true = VECTOR_OP("any_true", 0x53, ["v128"], "i32");
+}
 
-  f32x4_ceil = VECTOR_OP("f32x4_ceil", 0x67, ["v128"], "v128");
-  f32x4_floor = VECTOR_OP("f32x4_floor", 0x68, ["v128"], "v128");
-  f32x4_trunc = VECTOR_OP("f32x4_trunc", 0x69, ["v128"], "v128");
-  f32x4_nearest = VECTOR_OP("f32x4_nearest", 0x6a, ["v128"], "v128");
+class I32x4 extends V128 {
+  splat = VECTOR_OP("splat", 0x11, ["i32"], "v128");
+  extract_lane = VECTOR_OPL("extract_lane", 0x1b, ["v128"], "i32");
+  replace_lane = VECTOR_OPL("replace_lane", 0x1c, ["i32", "v128"], "v128");
 
-  i32x4_abs = VECTOR_OP("i32x4_abs", 0xa0, ["v128"], "v128");
-  i32x4_neg = VECTOR_OP("i32x4_neg", 0xa1, ["v128"], "v128");
-  i32x4_all_true = VECTOR_OP("i32x4_all_true", 0xa3, ["v128"], "i32");
-  i32x4_bitmask = VECTOR_OP("i32x4_bitmask", 0xa4, ["v128"], "i32");
-  i32x4_shl = VECTOR_OP("i32x4_shl", 0xab, ["v128", "i32"], "v128");
-  i32x4_shr_s = VECTOR_OP("i32x4_shr_s", 0xac, ["v128", "i32"], "v128");
-  i32x4_shr_u = VECTOR_OP("i32x4_shr_u", 0xad, ["v128", "i32"], "v128");
-  i32x4_add = VECTOR_OP("i32x4_add", 0xae, ["v128", "v128"], "v128");
-  i32x4_sub = VECTOR_OP("i32x4_sub", 0xb1, ["v128", "v128"], "v128");
-  i32x4_mul = VECTOR_OP("i32x4_mul", 0xb5, ["v128", "v128"], "v128");
-  i32x4_min_s = VECTOR_OP("i32x4_min_s", 0xb6, ["v128", "v128"], "v128");
-  i32x4_min_u = VECTOR_OP("i32x4_min_u", 0xb7, ["v128", "v128"], "v128");
-  i32x4_max_s = VECTOR_OP("i32x4_max_s", 0xb8, ["v128", "v128"], "v128");
-  i32x4_max_u = VECTOR_OP("i32x4_max_u", 0xb9, ["v128", "v128"], "v128");
+  eq = VECTOR_OP("eq", 0x37, ["v128", "v128"], "v128");
+  ne = VECTOR_OP("ne", 0x38, ["v128", "v128"], "v128");
+  lt_s = VECTOR_OP("lt_s", 0x39, ["v128", "v128"], "v128");
+  lt_u = VECTOR_OP("lt_u", 0x3a, ["v128", "v128"], "v128");
+  gt_s = VECTOR_OP("gt_s", 0x3b, ["v128", "v128"], "v128");
+  gt_u = VECTOR_OP("gt_u", 0x3c, ["v128", "v128"], "v128");
+  le_s = VECTOR_OP("le_s", 0x3d, ["v128", "v128"], "v128");
+  le_u = VECTOR_OP("le_u", 0x3e, ["v128", "v128"], "v128");
+  ge_s = VECTOR_OP("ge_s", 0x3f, ["v128", "v128"], "v128");
+  ge_u = VECTOR_OP("ge_u", 0x40, ["v128", "v128"], "v128");
 
-  f32x4_abs = VECTOR_OP("f32x4_abs", 0xe0, ["v128"], "v128");
-  f32x4_neg = VECTOR_OP("f32x4_neg", 0xe1, ["v128"], "v128");
-  f32x4_sqrt = VECTOR_OP("f32x4_sqrt", 0xe3, ["v128"], "v128");
-  f32x4_add = VECTOR_OP("f32x4_add", 0xe4, ["v128", "v128"], "v128");
-  f32x4_sub = VECTOR_OP("f32x4_sub", 0xe5, ["v128", "v128"], "v128");
-  f32x4_mul = VECTOR_OP("f32x4_mul", 0xe6, ["v128", "v128"], "v128");
-  f32x4_div = VECTOR_OP("f32x4_div", 0xe7, ["v128", "v128"], "v128");
-  f32x4_min = VECTOR_OP("f32x4_min", 0xe8, ["v128", "v128"], "v128");
-  f32x4_max = VECTOR_OP("f32x4_max", 0xe9, ["v128", "v128"], "v128");
-  f32x4_pmin = VECTOR_OP("f32x4_pmin", 0xea, ["v128", "v128"], "v128");
-  f32x4_pmax = VECTOR_OP("f32x4_pmax", 0xeb, ["v128", "v128"], "v128");
+  abs = VECTOR_OP("abs", 0xa0, ["v128"], "v128");
+  neg = VECTOR_OP("neg", 0xa1, ["v128"], "v128");
+  all_true = VECTOR_OP("all_true", 0xa3, ["v128"], "i32");
+  bitmask = VECTOR_OP("bitmask", 0xa4, ["v128"], "i32");
+  shl = VECTOR_OP("shl", 0xab, ["v128", "i32"], "v128");
+  shr_s = VECTOR_OP("shr_s", 0xac, ["v128", "i32"], "v128");
+  shr_u = VECTOR_OP("shr_u", 0xad, ["v128", "i32"], "v128");
+  add = VECTOR_OP("add", 0xae, ["v128", "v128"], "v128");
+  sub = VECTOR_OP("sub", 0xb1, ["v128", "v128"], "v128");
+  mul = VECTOR_OP("mul", 0xb5, ["v128", "v128"], "v128");
+  min_s = VECTOR_OP("min_s", 0xb6, ["v128", "v128"], "v128");
+  min_u = VECTOR_OP("min_u", 0xb7, ["v128", "v128"], "v128");
+  max_s = VECTOR_OP("max_s", 0xb8, ["v128", "v128"], "v128");
+  max_u = VECTOR_OP("max_u", 0xb9, ["v128", "v128"], "v128");
+}
+
+class F32x4 extends V128 {
+  splat = VECTOR_OP("splat", 0x13, ["f32"], "v128");
+  extract_lane = VECTOR_OPL("extract_lane", 0x1f, ["v128"], "f32");
+  replace_lane = VECTOR_OPL("replace_lane", 0x20, ["f32", "v128"], "v128");
+
+  eq = VECTOR_OP("eq", 0x41, ["v128", "v128"], "v128");
+  ne = VECTOR_OP("ne", 0x42, ["v128", "v128"], "v128");
+  lt = VECTOR_OP("lt", 0x43, ["v128", "v128"], "v128");
+  gt = VECTOR_OP("gt", 0x44, ["v128", "v128"], "v128");
+  le = VECTOR_OP("le", 0x45, ["v128", "v128"], "v128");
+  ge = VECTOR_OP("ge", 0x46, ["v128", "v128"], "v128");
+
+  ceil = VECTOR_OP("ceil", 0x67, ["v128"], "v128");
+  floor = VECTOR_OP("floor", 0x68, ["v128"], "v128");
+  trunc = VECTOR_OP("trunc", 0x69, ["v128"], "v128");
+  nearest = VECTOR_OP("nearest", 0x6a, ["v128"], "v128");
+
+  abs = VECTOR_OP("abs", 0xe0, ["v128"], "v128");
+  neg = VECTOR_OP("neg", 0xe1, ["v128"], "v128");
+  sqrt = VECTOR_OP("sqrt", 0xe3, ["v128"], "v128");
+  add = VECTOR_OP("add", 0xe4, ["v128", "v128"], "v128");
+  sub = VECTOR_OP("sub", 0xe5, ["v128", "v128"], "v128");
+  mul = VECTOR_OP("mul", 0xe6, ["v128", "v128"], "v128");
+  div = VECTOR_OP("div", 0xe7, ["v128", "v128"], "v128");
+  min = VECTOR_OP("min", 0xe8, ["v128", "v128"], "v128");
+  max = VECTOR_OP("max", 0xe9, ["v128", "v128"], "v128");
+  pmin = VECTOR_OP("pmin", 0xea, ["v128", "v128"], "v128");
+  pmax = VECTOR_OP("pmax", 0xeb, ["v128", "v128"], "v128");
 }
