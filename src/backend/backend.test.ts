@@ -1,13 +1,12 @@
 import { describe, expect, test as globalTest } from "vitest";
-import { getBackend, accessorAlu, BackendType, init } from "../backend";
+import { accessorGlobal, backendTypes, getBackend, init } from "../backend";
 import { ShapeTracker } from "../shape";
 import { AluExp, DType } from "../alu";
 import { range } from "../utils";
 
-const backends: BackendType[] = ["cpu", "webgpu"];
-const backendsAvailable = await init(...backends);
+const backendsAvailable = await init(...backendTypes);
 
-describe.each(backends)("Backend '%s'", (backendType) => {
+describe.each(backendTypes)("Backend '%s'", (backendType) => {
   const skipped = !backendsAvailable.includes(backendType);
   const test = globalTest.skipIf(skipped);
 
@@ -21,8 +20,8 @@ describe.each(backends)("Backend '%s'", (backendType) => {
 
     try {
       const gidx = AluExp.special(DType.Int32, "gidx", 3);
-      const arg1 = accessorAlu(0, shape, gidx);
-      const arg2 = accessorAlu(1, shape.flip([true]), gidx);
+      const arg1 = accessorGlobal(0, shape, gidx);
+      const arg2 = accessorGlobal(1, shape.flip([true]), gidx);
 
       const exe1 = await backend.prepare(2, AluExp.mul(arg1, arg2));
       backend.dispatch(exe1, [a, b], [c]);

@@ -13,6 +13,7 @@ import { AluExp, DType } from "./alu";
 import { ShapeTracker, unravelAlu } from "./shape";
 
 export type BackendType = "cpu" | "webgpu";
+export const backendTypes: BackendType[] = ["cpu", "webgpu"];
 
 let defaultBackend: BackendType = "webgpu";
 const initializedBackends = new Map<BackendType, Backend>();
@@ -26,7 +27,7 @@ const initializedBackends = new Map<BackendType, Backend>();
  */
 export async function init(...backends: BackendType[]): Promise<BackendType[]> {
   if (backends.length === 0) {
-    backends = ["cpu", "webgpu"];
+    backends = backendTypes;
   }
   const promises: Promise<void>[] = [];
   for (const backendType of new Set(backends)) {
@@ -100,10 +101,10 @@ export interface Backend {
   readSync(slot: Slot, start?: number, count?: number): ArrayBuffer;
 
   /** Prepare an expression to be executed later. */
-  prepare(nargs: number, exp: AluExp): Promise<Executable<any>>;
+  prepare(nargs: number, exp: AluExp): Promise<Executable>;
 
   /** Prepare an expression to be executed later, blocking variant. */
-  prepareSync(nargs: number, exp: AluExp): Executable<any>;
+  prepareSync(nargs: number, exp: AluExp): Executable;
 
   /**
    * Run a backend operation that was previously prepared.
@@ -112,10 +113,10 @@ export interface Backend {
    * in the dispatch order. Also, `read()` will wait for all pending operations
    * on that slot to finish.
    */
-  dispatch(exe: Executable<any>, inputs: Slot[], outputs: Slot[]): void;
+  dispatch(exe: Executable, inputs: Slot[], outputs: Slot[]): void;
 }
 
-export class Executable<T> {
+export class Executable<T = any> {
   constructor(
     readonly nargs: number,
     readonly exp: AluExp,
@@ -131,7 +132,7 @@ export class SlotError extends Error {
 }
 
 /** Expression for accessing `offset` in input array with the given shape. */
-export function accessorAlu(
+export function accessorGlobal(
   gid: number,
   st: ShapeTracker,
   offset: AluExp,
@@ -142,4 +143,14 @@ export function accessorAlu(
     AluExp.globalIndex(DType.Float32, gid, index),
     AluExp.f32(0),
   );
+}
+
+/** Expression for accessing `offset` in an array recipe. */
+export function accessorAluExp(
+  exp: AluExp,
+  st: ShapeTracker,
+  offset: AluExp,
+): AluExp {
+  const [_index, valid] = st.toAluExp(unravelAlu(st.shape, offset));
+  return AluExp.where(valid, exp, AluExp.f32(0));
 }
