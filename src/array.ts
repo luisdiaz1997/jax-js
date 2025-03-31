@@ -9,7 +9,7 @@ import {
   Slot,
 } from "./backend";
 import { ShapeTracker } from "./shape";
-import { deepEqual } from "./utils";
+import { deepEqual, isPermutation } from "./utils";
 
 const JsArray = globalThis.Array;
 
@@ -77,6 +77,10 @@ export class Array {
     return this.#backend.type;
   }
 
+  get ndim(): number {
+    return this.shape.length;
+  }
+
   static zeros(
     shape: number[],
     { dtype, backend }: { dtype?: DType; backend?: BackendType } = {},
@@ -101,6 +105,49 @@ export class Array {
       dtype,
       getBackend(backend),
     );
+  }
+
+  // Movement operations
+
+  #reshape(st: ShapeTracker): Array {
+    return new Array(
+      this.#source,
+      st,
+      this.dtype,
+      this.#backend,
+      this.#pending,
+    );
+  }
+
+  reshape(shape: number[]): Array {
+    const autoIdx = shape.indexOf(-1);
+    if (autoIdx !== -1) {
+      const remaining = this.#st.size / shape.reduce((a, b) => a * b, -1);
+      if (remaining % 1 !== 0 || remaining < 0) {
+        throw new Error(
+          `Invalid reshape: ${JSON.stringify(this.shape)} -> ${JSON.stringify(shape)}`,
+        );
+      }
+      shape = shape.toSpliced(autoIdx, 1, remaining);
+    }
+    return this.#reshape(this.#st.reshape(shape));
+  }
+
+  flatten(): Array {
+    return this.reshape([-1]);
+  }
+  ravel(): Array {
+    return this.reshape([-1]);
+  }
+
+  transpose(axes?: number[]): Array {
+    if (axes) {
+      if (!isPermutation(axes, this.ndim))
+        throw new Error(`Invalid axes for transpose: ${JSON.stringify(axes)}`);
+    } else if (!axes) {
+      axes = this.shape.map((_, i) => i).reverse();
+    }
+    return this.#reshape(this.#st.permute(axes));
   }
 
   #binary(op: AluOp, other: Array) {
