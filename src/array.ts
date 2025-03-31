@@ -13,6 +13,10 @@ import { deepEqual, isPermutation } from "./utils";
 
 const JsArray = globalThis.Array;
 
+function gidxVar(size: number) {
+  return AluExp.special(DType.Int32, "gidx", 0);
+}
+
 class PendingExecute {
   prepared: Executable | null = null;
   submitted = false;
@@ -167,7 +171,7 @@ export class Array {
       return new Array(exp, this.#st, this.dtype, this.#backend);
     }
 
-    const gidx = AluExp.special(DType.Int32, "gidx", this.#st.size);
+    const gidx = gidxVar(this.#st.size);
 
     const inputs: Slot[] = [];
     const src: AluExp[] = [];
@@ -206,9 +210,9 @@ export class Array {
    * Calling this twice is a no-op.
    */
   #realize(): void {
+    const gidx = gidxVar(this.#st.size);
     if (this.#source instanceof AluExp) {
       const output = this.#backend.malloc(this.#st.size * 4);
-      const gidx = AluExp.special(DType.Int32, "gidx", this.#st.size);
       const exp = accessorAluExp(this.#source, this.#st, gidx);
       const pendingItem = new PendingExecute(exp, [], [output]);
       this.#source = output;
@@ -218,7 +222,6 @@ export class Array {
       // Only realize if the ShapeTracker is non-contiguous.
       if (this.#st.contiguous) return;
       const output = this.#backend.malloc(this.#st.size * 4);
-      const gidx = AluExp.special(DType.Int32, "gidx", this.#st.size);
       const exp = accessorGlobal(0, this.#st, gidx);
       const pendingItem = new PendingExecute(exp, [this.#source], [output]);
       this.#source = output;
