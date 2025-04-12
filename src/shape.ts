@@ -651,16 +651,15 @@ export class ShapeTracker {
   }
 
   toAluExp(idxs: AluExp[]): [AluExp, AluExp] {
-    let [iexpr, vexpr] = this.views[this.views.length - 1]
-      .minify()
-      .toAluExp(idxs);
+    // Note: Cannot minify the first view since this takes indices.
+    let [iexpr, vexpr] = this.views[this.views.length - 1].toAluExp(idxs);
     for (let i = this.views.length - 2; i >= 0; i--) {
       const view = this.views[i].minify();
       const exprs = view.toAluExp(unravelAlu(view.shape, iexpr));
       iexpr = exprs[0];
       vexpr = AluExp.mul(vexpr, exprs[1]);
     }
-    return [iexpr, vexpr];
+    return [iexpr.simplify(), vexpr.simplify()];
   }
 
   simplify(): ShapeTracker {

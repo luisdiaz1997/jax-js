@@ -320,11 +320,70 @@ export class Reduction {
     readonly dtype: DType,
     /** Operation to perform. Only a few reduction ops are supported. */
     readonly op: AluOp.Add | AluOp.Mul | AluOp.Min | AluOp.Max,
-    /** Axis to reduce over. */
-    readonly axis: number,
     /** Size of the reduction axis. */
     readonly size: number,
     /** Follow-up expression defined with the "reduced" variable, defaults to identity. */
     readonly fusion: AluExp = AluExp.variable(dtype, "reduced"),
   ) {}
+
+  /** Get the identity for this reduction operation. */
+  get identity(): any {
+    if (this.dtype === DType.Bool) {
+      return this.op === AluOp.Add || this.op === AluOp.Max ? false : true;
+    } else if (this.dtype === DType.Int32) {
+      if (this.op === AluOp.Add) return 0;
+      else if (this.op === AluOp.Mul) return 1;
+      else if (this.op === AluOp.Min) return -1 >>> 1;
+      else if (this.op === AluOp.Max) return 1 << 31;
+    } else if (this.dtype === DType.Float32) {
+      if (this.op === AluOp.Add) return 0;
+      else if (this.op === AluOp.Mul) return 1;
+      else if (this.op === AluOp.Min) return Infinity;
+      else if (this.op === AluOp.Max) return -Infinity;
+    } else {
+      throw new Error(`Unsupported reduction type ${this.dtype}`);
+    }
+  }
+
+  /** Evaluate this operation on CPU. */
+  evaluate(...values: any) {
+    if (this.dtype === DType.Bool) {
+      if (this.op === AluOp.Add || this.op === AluOp.Max) {
+        return values.reduce((a: boolean, b: boolean) => a || b, true);
+      } else if (this.op === AluOp.Mul || this.op === AluOp.Min) {
+        return values.reduce((a: boolean, b: boolean) => a && b, true);
+      }
+    } else if (this.dtype === DType.Int32) {
+      if (this.op === AluOp.Add) {
+        return values.reduce((a: number, b: number) => (a + b) | 0, 0);
+      } else if (this.op === AluOp.Mul) {
+        return values.reduce((a: number, b: number) => (a * b) | 0, 1);
+      } else if (this.op === AluOp.Min) {
+        return values.reduce(
+          (a: number, b: number) => Math.min(a, b),
+          -1 >>> 1,
+        );
+      } else if (this.op === AluOp.Max) {
+        return values.reduce((a: number, b: number) => Math.max(a, b), 1 << 31);
+      }
+    } else if (this.dtype === DType.Float32) {
+      if (this.op === AluOp.Add) {
+        return values.reduce((a: number, b: number) => a + b, 0);
+      } else if (this.op === AluOp.Mul) {
+        return values.reduce((a: number, b: number) => a * b, 1);
+      } else if (this.op === AluOp.Min) {
+        return values.reduce(
+          (a: number, b: number) => Math.min(a, b),
+          Infinity,
+        );
+      } else if (this.op === AluOp.Max) {
+        return values.reduce(
+          (a: number, b: number) => Math.max(a, b),
+          -Infinity,
+        );
+      }
+    } else {
+      throw new Error(`Unsupported reduction type ${this.dtype}`);
+    }
+  }
 }

@@ -61,8 +61,12 @@ export class CPUBackend implements Backend {
     return new Executable(kernel, undefined);
   }
 
-  dispatch(exe: Executable<void>, inputs: Slot[], outputs: Slot[]): void {
-    const exp = exe.kernel.exp.simplify();
+  dispatch(
+    { kernel }: Executable<void>,
+    inputs: Slot[],
+    outputs: Slot[],
+  ): void {
+    const exp = kernel.exp.simplify();
     const inputBuffers = inputs.map((slot) => this.#getBuffer(slot));
     const outputBuffers = outputs.map((slot) => this.#getBuffer(slot));
 
@@ -70,8 +74,19 @@ export class CPUBackend implements Backend {
     const outputArray = new Float32Array(outputBuffers[0]);
 
     const globals = (gidx: number, bufidx: number) => inputArrays[gidx][bufidx];
-    for (let i = 0; i < exe.kernel.size; i++) {
-      outputArray[i] = exp.evaluate({ gidx: i }, globals);
+    if (!kernel.reduction) {
+      for (let i = 0; i < kernel.size; i++) {
+        outputArray[i] = exp.evaluate({ gidx: i }, globals);
+      }
+    } else {
+      for (let i = 0; i < kernel.size; i++) {
+        let acc = kernel.reduction.identity;
+        for (let j = 0; j < kernel.reduction.size; j++) {
+          const item = exp.evaluate({ gidx: i, ridx: j }, globals);
+          acc = kernel.reduction.evaluate(acc, item);
+        }
+        outputArray[i] = kernel.reduction.fusion.evaluate({ reduced: acc });
+      }
     }
   }
 

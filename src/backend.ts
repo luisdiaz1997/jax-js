@@ -9,7 +9,7 @@
  * and dispatch happens on the level of each shader. Buffers are untyped.
  */
 
-import { AluExp, DType, Kernel, Reduction } from "./alu";
+import { AluExp, DType, Kernel } from "./alu";
 import { ShapeTracker, unravelAlu } from "./shape";
 
 export type BackendType = "cpu" | "webgpu";

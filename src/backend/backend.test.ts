@@ -1,7 +1,7 @@
 import { describe, expect, test as globalTest } from "vitest";
 import { accessorGlobal, backendTypes, getBackend, init } from "../backend";
 import { ShapeTracker } from "../shape";
-import { AluExp, DType, Kernel } from "../alu";
+import { AluExp, AluOp, DType, Kernel, Reduction } from "../alu";
 import { range } from "../utils";
 
 const backendsAvailable = await init(...backendTypes);
@@ -101,6 +101,39 @@ describe.each(backendTypes)("Backend '%s'", (backendType) => {
       expect(new Float32Array(buf)).toEqual(array.slice(3, 5));
     } finally {
       backend.decRef(a);
+    }
+  });
+
+  test("performs reduction", ({ skip }) => {
+    if (backendType !== "cpu") skip(); // reduction not on webgpu yet
+
+    const backend = getBackend(backendType);
+
+    const array = new Float32Array([1, 1, 2, 3, 5, 7]);
+    const a = backend.malloc(6 * 4, array.buffer);
+    const output = backend.malloc(3 * 4);
+    try {
+      const st = ShapeTracker.fromShape([3, 2]);
+      const gidx = AluExp.special(DType.Int32, "gidx", 3);
+      const ridx = AluExp.special(DType.Int32, "ridx", 2);
+      const [index, valid] = st.toAluExp([gidx, ridx]);
+
+      const exp = AluExp.where(
+        valid,
+        AluExp.globalIndex(DType.Float32, 0, index),
+        AluExp.f32(0),
+      ); // accessor where columns are reduced
+      const reduction = new Reduction(DType.Float32, AluOp.Add, 2);
+      const kernel = new Kernel(1, 3, exp, reduction);
+
+      const exe = backend.prepareSync(kernel);
+      backend.dispatch(exe, [a], [output]);
+
+      const buf = backend.readSync(output);
+      expect(new Float32Array(buf)).toEqual(new Float32Array([2, 5, 12]));
+    } finally {
+      backend.decRef(a);
+      backend.decRef(output);
     }
   });
 });
