@@ -1,8 +1,8 @@
 import * as tf from "@tensorflow/tfjs-core";
 
 import { DType } from "./alu";
-import { Array } from "./core";
-import * as core from "./core";
+import { Array } from "./frontend/core";
+import * as core from "./frontend/core";
 import { deepEqual } from "./utils";
 
 export { Array, DType };
