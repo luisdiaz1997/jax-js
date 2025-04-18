@@ -13,6 +13,13 @@ npm test
 - How to do optimizations?? map out the plan
 - Think about two-stage `cumsum()`
 - Think about [`Symbol.toPrimitive`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/toPrimitive)
+- Disposal by enforcing a `.ref` getter? This isn't included in console.log, but it's included in `{...spread}` syntax, hopefully not used often with arrays.
+  ```js
+  let f = (x) => x.ref.mul(x.ref).mul(x);
+  let df = grad(f); // d/dx (x^3) = 3x^2
+  expect(df(4)).toBeAllclose(48);
+  expect(df(5)).toBeAllclose(75);
+  ```
 
 ## Milestones
 
