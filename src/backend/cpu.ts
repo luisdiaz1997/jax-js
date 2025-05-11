@@ -71,6 +71,7 @@ export class CPUBackend implements Backend {
     const inputBuffers = inputs.map((slot) => this.#getBuffer(slot));
     const outputBuffers = outputs.map((slot) => this.#getBuffer(slot));
 
+    // BUG: Use proper Float32Array vs Int32Array type here.
     const inputArrays = inputBuffers.map((buf) => new Float32Array(buf));
     const outputArray = new Float32Array(outputBuffers[0]);
 

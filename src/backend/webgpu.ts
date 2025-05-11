@@ -154,10 +154,10 @@ export class WebGPUBackend implements Backend {
   }
 }
 
-function dtypeToWgsl(dtype: DType): string {
+function dtypeToWgsl(dtype: DType, storage: boolean = false): string {
   switch (dtype) {
     case DType.Bool:
-      return "bool";
+      return storage ? "i32" : "bool"; // WebGPU does not support bools in buffers.
     case DType.Int32:
       return "i32";
     case DType.Float32:
@@ -194,7 +194,7 @@ function pipelineSource(
     console.info(tune.exp.toString());
   }
 
-  const { nargs } = kernel;
+  const { nargs, reduction: re } = kernel;
   const args = Array.from({ length: nargs }, (_, i) => `in${i}`);
 
   // binding(0..n-1): input buffers
@@ -218,14 +218,16 @@ function pipelineSource(
   });
 
   for (let i = 0; i < nargs; i++) {
-    let ty = dtypeToWgsl(usedArgs[i] ?? DType.Float32);
-    if (ty === "bool") ty = "i32"; // WebGPU does not support bools in storage buffers.
+    // If not used, just assume float32, all that matters is size / alignment.
+    const ty = dtypeToWgsl(usedArgs[i] ?? DType.Float32, true);
     emit(
       `@group(0) @binding(${i}) var<storage, read> ${args[i]} : array<${ty}>;`,
     );
   }
+
+  const resultTy = dtypeToWgsl(re?.dtype ?? tune.exp.dtype, true);
   emit(
-    `@group(0) @binding(${nargs}) var<storage, read_write> result : array<f32>;`,
+    `@group(0) @binding(${nargs}) var<storage, read_write> result : array<${resultTy}>;`,
   );
 
   const workgroupSize = findPow2(
@@ -275,8 +277,10 @@ function pipelineSource(
       const b = gen(src[1]);
       if (op === AluOp.Add) source = `(${a} + ${b})`;
       else if (op === AluOp.Sub) source = `(${a} - ${b})`;
-      else if (op === AluOp.Mul) source = `(${a} * ${b})`;
-      else if (op === AluOp.Idiv)
+      else if (op === AluOp.Mul) {
+        if (dtype === DType.Bool) source = `(${a} && ${b})`;
+        else source = `(${a} * ${b})`;
+      } else if (op === AluOp.Idiv)
         source = dtype === DType.Int32 ? `(${a} / ${b})` : `floor(${a} / ${b})`;
       else if (op === AluOp.Mod) source = `(${a} % ${b})`;
       else if (op === AluOp.Min) source = `min(${a}, ${b})`;
@@ -317,7 +321,7 @@ function pipelineSource(
 
   if (!kernel.reduction) {
     countReferences(tune.exp);
-    emit(`result[gidx] = ${gen(tune.exp)};`);
+    emit(`result[gidx] = ${resultTy}(${gen(tune.exp)});`);
   } else {
     const re = kernel.reduction;
     if ((tune.size.groups ?? 1) > 1) {
@@ -367,17 +371,23 @@ function pipelineSource(
     expContext.clear();
     references.clear();
     seen.clear();
+
     const outputIdxExps: AluExp[] = [];
+    const fusionExps: AluExp[] = [];
     for (let i = 0; i < upcast; i++) {
       const exp = tune.outputIdxExp.substitute({ upcast: AluExp.i32(i) });
       outputIdxExps.push(exp.simplify(cache));
       countReferences(outputIdxExps[i]);
+      fusionExps.push(
+        re.fusion
+          .substitute({ acc: AluExp.variable(re.dtype, acc[i]) })
+          .simplify(cache),
+      );
+      countReferences(fusionExps[i]);
     }
     for (let i = 0; i < upcast; i++) {
-      const result = re.fusion.substitute({
-        acc: AluExp.variable(re.dtype, acc[i]),
-      });
-      emit(`result[${gen(outputIdxExps[i])}] = ${gen(result)};`);
+      const index = gen(outputIdxExps[i]);
+      emit(`result[${index}] = ${resultTy}(${gen(fusionExps[i])});`);
     }
   }
 

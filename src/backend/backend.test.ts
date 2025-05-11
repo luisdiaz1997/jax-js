@@ -1,4 +1,4 @@
-import { describe, expect, test as globalTest } from "vitest";
+import { beforeEach, expect, suite, test } from "vitest";
 
 import {
   accessorGlobal,
@@ -15,9 +15,12 @@ import { range } from "../utils";
 
 const backendsAvailable = await init(...backendTypes);
 
-describe.each(backendTypes)("backend:%s", (backendType) => {
+suite.each(backendTypes)("backend:%s", (backendType) => {
   const skipped = !backendsAvailable.includes(backendType);
-  const test = globalTest.skipIf(skipped);
+
+  beforeEach(({ skip }) => {
+    if (skipped) skip();
+  });
 
   test("can run simple operations", async () => {
     const backend = getBackend(backendType);

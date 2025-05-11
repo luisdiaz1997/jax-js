@@ -270,6 +270,7 @@ export class Array extends Tracer {
     custom: (src: AluExp[]) => AluExp,
     arrays: Array[],
     dtypeOverride?: (DType | undefined)[],
+    dtypeOutput?: DType,
   ): Array {
     const n = arrays.length;
     const backend = arrays[0].#backend;
@@ -298,7 +299,8 @@ export class Array extends Tracer {
         );
       }
     }
-    if (!dtype) throw new TypeError("nary operation with no dtype");
+    dtypeOutput ??= dtype;
+    if (!dtypeOutput) throw new TypeError("nary operation with no dtype");
 
     const newShape = arrays.map((a) => a.shape).reduce(generalBroadcast);
     arrays = arrays.map((ar) => {
@@ -339,7 +341,7 @@ export class Array extends Tracer {
     return new Array(
       output,
       ShapeTracker.fromShape(newShape),
-      dtype,
+      dtypeOutput,
       backend,
       pending,
     );
@@ -423,7 +425,7 @@ export class Array extends Tracer {
   }
 
   /** Realize the array and return it as data. */
-  async data(): Promise<Float32Array> {
+  async data(): Promise<Float32Array | Int32Array> {
     this.#realize();
     const pending = this.#pending;
     if (pending) {
@@ -432,31 +434,35 @@ export class Array extends Tracer {
       for (const p of pending) p.submit(this.#backend);
     }
     const buf = await this.#backend.read(this.#source as Slot);
-    return new Float32Array(buf);
+    return this.dtype === DType.Float32
+      ? new Float32Array(buf)
+      : new Int32Array(buf);
   }
 
   /**
    * Realize the array and return it as data. This is a sync variant and not
    * recommended for performance reasons, as it will block rendering.
    */
-  dataSync(): Float32Array {
+  dataSync(): Float32Array | Int32Array {
     this.#realize();
     for (const p of this.#pending) {
       p.prepareSync(this.#backend);
       p.submit(this.#backend);
     }
     const buf = this.#backend.readSync(this.#source as Slot);
-    return new Float32Array(buf);
+    return this.dtype === DType.Float32
+      ? new Float32Array(buf)
+      : new Int32Array(buf);
   }
 
   /** Convert this array into a JavaScript object (blocking). */
   js() {
-    return dataToJs(this.dataSync(), this.shape);
+    return dataToJs(this.dtype, this.dataSync(), this.shape);
   }
 
   /** Convert this array into a JavaScript object, asynchronously. */
   async jsAsync() {
-    return dataToJs(await this.data(), this.shape);
+    return dataToJs(this.dtype, await this.data(), this.shape);
   }
 
   /** @private Internal plumbing method for Array / Tracer ops. */
@@ -486,11 +492,11 @@ export class Array extends Tracer {
         // TODO: handle NaN
         const custom = ([x, y]: AluExp[]) =>
           AluExp.mul(AluExp.cmpne(x, y), AluExp.cmplt(x, y).not());
-        return [Array.#naryCustom("greater", custom, [x, y])];
+        return [Array.#naryCustom("greater", custom, [x, y], [], DType.Bool)];
       },
       [Primitive.Less]([x, y]) {
         const custom = ([x, y]: AluExp[]) => AluExp.cmplt(x, y);
-        return [Array.#naryCustom("less", custom, [x, y])];
+        return [Array.#naryCustom("less", custom, [x, y], [], DType.Bool)];
       },
       [Primitive.Where]([cond, x, y]) {
         const custom = ([cond, x, y]: AluExp[]) => AluExp.where(cond, x, y);
@@ -627,15 +633,20 @@ function arrayFromData(
   }
 }
 
-function dataToJs(data: Float32Array, shape: number[]): RecursiveArray<number> {
+function dataToJs(
+  dtype: DType,
+  data: Float32Array | Int32Array,
+  shape: number[],
+): RecursiveArray<number> | RecursiveArray<boolean> {
   if (shape.length === 0) {
-    return data[0];
+    return dtype === DType.Bool ? Boolean(data[0]) : data[0];
   }
   const [first, ...rest] = shape;
   const restSize = prod(rest);
   const ret: any[] = [];
   for (let i = 0; i < first; i++) {
-    ret.push(dataToJs(data.slice(i * restSize, (i + 1) * restSize), rest));
+    const subarray = data.slice(i * restSize, (i + 1) * restSize);
+    ret.push(dataToJs(dtype, subarray, rest));
   }
   return ret;
 }
