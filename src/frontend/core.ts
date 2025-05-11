@@ -17,6 +17,8 @@ export enum Primitive {
   ReduceSum = "reduce_sum",
   Greater = "greater",
   Less = "less",
+  Equal = "equal",
+  NotEqual = "not_equal",
   Where = "where",
   Transpose = "transpose",
   Broadcast = "broadcast",
@@ -48,6 +50,14 @@ export function greater(x: TracerValue, y: TracerValue) {
 
 export function less(x: TracerValue, y: TracerValue) {
   return bind1(Primitive.Less, [x, y]);
+}
+
+export function equal(x: TracerValue, y: TracerValue) {
+  return bind1(Primitive.Equal, [x, y]);
+}
+
+export function notEqual(x: TracerValue, y: TracerValue) {
+  return bind1(Primitive.NotEqual, [x, y]);
 }
 
 export function where(cond: TracerValue, x: TracerValue, y: TracerValue) {
@@ -185,6 +195,12 @@ export abstract class Tracer {
   }
   less(other: this | TracerValue) {
     return less(this, other) as this;
+  }
+  equal(other: this | TracerValue) {
+    return equal(this, other) as this;
+  }
+  notEqual(other: this | TracerValue) {
+    return notEqual(this, other) as this;
   }
   sum(axis?: number | number[]) {
     return reduceSum(this, axis) as this;

@@ -87,4 +87,23 @@ suite.each(backendTypes)("backend:%s", (backend) => {
       expect(np.where(true, 7, np.array([10, 11, 12])).js()).toEqual([7, 7, 7]);
     });
   });
+
+  suite("jax.numpy.equal()", () => {
+    test("computes equal", () => {
+      const x = np.array([1, 2, 3, 4]);
+      const y = np.array([4, 5, 3, 4]);
+      expect(np.equal(x, y).js()).toEqual([false, false, true, true]);
+      expect(np.notEqual(x, y).js()).toEqual([true, true, false, false]);
+    });
+
+    test("does not propagate gradients", () => {
+      const x = np.array([1, 2, 3]);
+      const y = np.array([0, 5, 6]);
+      const f = ({ x, y }: { x: np.Array; y: np.Array }) =>
+        np.where(np.equal(x, y), 1, 0).sum();
+      const grads = grad(f)({ x, y });
+      expect(grads.x.js()).toEqual([0, 0, 0]);
+      expect(grads.y.js()).toEqual([0, 0, 0]);
+    });
+  });
 });

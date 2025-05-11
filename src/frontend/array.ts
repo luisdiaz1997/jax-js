@@ -498,6 +498,14 @@ export class Array extends Tracer {
         const custom = ([x, y]: AluExp[]) => AluExp.cmplt(x, y);
         return [Array.#naryCustom("less", custom, [x, y], [], DType.Bool)];
       },
+      [Primitive.Equal]([x, y]) {
+        const custom = ([x, y]: AluExp[]) => AluExp.cmpne(x, y).not();
+        return [Array.#naryCustom("equal", custom, [x, y], [], DType.Bool)];
+      },
+      [Primitive.NotEqual]([x, y]) {
+        const custom = ([x, y]: AluExp[]) => AluExp.cmpne(x, y);
+        return [Array.#naryCustom("notEqual", custom, [x, y], [], DType.Bool)];
+      },
       [Primitive.Where]([cond, x, y]) {
         const custom = ([cond, x, y]: AluExp[]) => AluExp.where(cond, x, y);
         return [Array.#naryCustom("where", custom, [cond, x, y], [DType.Bool])];

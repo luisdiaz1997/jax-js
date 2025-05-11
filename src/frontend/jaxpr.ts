@@ -488,6 +488,8 @@ export const abstractEvalRules: Record<Primitive, AbstractEvalRule> = {
   },
   [Primitive.Greater]: compareAbstractEval,
   [Primitive.Less]: compareAbstractEval,
+  [Primitive.Equal]: compareAbstractEval,
+  [Primitive.NotEqual]: compareAbstractEval,
   [Primitive.Where]([cond, x, y]) {
     if (cond.dtype !== DType.Bool)
       throw new TypeError(`Condition must be boolean, got ${cond.dtype}`);

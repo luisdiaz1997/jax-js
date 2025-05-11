@@ -4,12 +4,14 @@ import { pureArray, zerosLike } from "./array";
 import {
   AbstractValue,
   cos,
+  equal,
   flattenFun,
   fullRaise,
   greater,
   less,
   neg,
   newMain,
+  notEqual,
   Primitive,
   reduceSum,
   sin,
@@ -72,6 +74,16 @@ type JvpRule = (
   params: any,
 ) => [Tracer[], Tracer[]];
 
+/** JVP rule that propagates no tangents, for non-differentiable operations. */
+function zerosJvp(func: (...primals: Tracer[]) => Tracer | Tracer[]): JvpRule {
+  return (primals, _tangents) => {
+    let outPrimals = func(...primals);
+    if (!Array.isArray(outPrimals)) outPrimals = [outPrimals];
+    const outTangents = outPrimals.map((x) => zerosLike(x));
+    return [outPrimals, outTangents];
+  };
+}
+
 const jvpRules: Partial<Record<Primitive, JvpRule>> = {
   [Primitive.Add]([x, y], [dx, dy]) {
     return [[x.add(y)], [dx.add(dy)]];
@@ -91,14 +103,10 @@ const jvpRules: Partial<Record<Primitive, JvpRule>> = {
   [Primitive.ReduceSum]([x], [dx], { axis }: { axis: number[] }) {
     return [[reduceSum(x, axis)], [reduceSum(dx, axis)]];
   },
-  [Primitive.Greater]([x, y], _tangents) {
-    const outPrimal = greater(x, y);
-    return [[outPrimal], [zerosLike(outPrimal)]];
-  },
-  [Primitive.Less]([x, y], _tangents) {
-    const outPrimal = less(x, y);
-    return [[outPrimal], [zerosLike(outPrimal)]];
-  },
+  [Primitive.Greater]: zerosJvp(greater),
+  [Primitive.Less]: zerosJvp(less),
+  [Primitive.Equal]: zerosJvp(equal),
+  [Primitive.NotEqual]: zerosJvp(notEqual),
   [Primitive.Where]([cond, x, y], [_, dx, dy]) {
     return [[where(cond, x, y)], [where(cond, dx, dy)]];
   },

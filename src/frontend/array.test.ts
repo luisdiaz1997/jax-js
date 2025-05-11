@@ -84,5 +84,8 @@ suite.each(backendTypes)("backend:%s", (backend) => {
     const b = array([1, 3, 4]);
     expect(b.greater(2).js()).toEqual([false, true, true]);
     expect(b.greater(2).dataSync()).toEqual(new Int32Array([0, 1, 1]));
+
+    expect(b.equal(3).js()).toEqual([false, true, false]);
+    expect(b.notEqual(array([2, 3, 4])).js()).toEqual([true, false, false]);
   });
 });
