@@ -180,10 +180,10 @@ export abstract class Tracer {
   mul(other: this | TracerValue) {
     return mul(this, other) as this;
   }
-  gt(other: this | TracerValue) {
+  greater(other: this | TracerValue) {
     return greater(this, other) as this;
   }
-  lt(other: this | TracerValue) {
+  less(other: this | TracerValue) {
     return less(this, other) as this;
   }
   sum(axis?: number | number[]) {
