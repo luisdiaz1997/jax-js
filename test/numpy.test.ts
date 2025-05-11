@@ -64,4 +64,12 @@ suite("jax.numpy.where()", () => {
     expect(grads.x.js()).toEqual([1, 0, 1]);
     expect(grads.y.js()).toEqual([0, 1, 0]);
   });
+
+  test("where broadcasting", () => {
+    const z = np.array([true, false, true, true]);
+    expect(np.where(z, 1, 3).js()).toEqual([1, 3, 1, 1]);
+    expect(np.where(false, 1, 3).js()).toEqual(3);
+    expect(np.where(false, 1, np.array([10, 11])).js()).toEqual([10, 11]);
+    expect(np.where(true, 7, np.array([10, 11, 12])).js()).toEqual([7, 7, 7]);
+  });
 });
