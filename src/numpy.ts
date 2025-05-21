@@ -27,7 +27,7 @@ export const complex64 = DType.Complex64;
 /** Euler's constant, `e = 2.7182818284590...` */
 export const e = Math.E;
 
-/** Euler-Mascheroni constant, `γ = 0.5772156649... */
+/** Euler-Mascheroni constant, `γ = 0.5772156649...` */
 export const eulerGamma = 0.5772156649015329;
 
 /** Positive infinity. */
@@ -277,3 +277,17 @@ export const dot = jit(function dot(x: Array, y: Array) {
 
   return x.mul(y).sum(x.ndim - 1);
 });
+
+/** Vector dot product of two arrays. */
+export const vecdot = jit(function vecdot(x: Array, y: Array) {
+  return x.mul(y).sum(Math.max(x.ndim, y.ndim) - 1);
+});
+
+/**
+ * Return the dot product of two vectors.
+ *
+ * Like vecdot() but flattens the arguments first into vectors.
+ */
+export function vdot(x: ArrayLike, y: ArrayLike): Array {
+  return vecdot(ravel(x), ravel(y));
+}
