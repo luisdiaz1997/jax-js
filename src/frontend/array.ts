@@ -646,7 +646,7 @@ export function array(
   { shape, dtype, backend }: { shape?: number[] } & DTypeAndBackend = {},
 ): Array {
   if (values instanceof Array) {
-    if (shape) {
+    if (shape && !deepEqual(values.shape, shape)) {
       values = values.reshape(shape);
     }
     if (dtype && values.dtype !== dtype) {
@@ -655,8 +655,10 @@ export function array(
     }
     return values;
   } else if (values instanceof Float32Array || values instanceof Int32Array) {
-    const ar = arrayFromData(values, { dtype, backend });
-    return shape ? ar.reshape(shape) : ar;
+    return arrayFromData(values, shape ?? [values.length], {
+      dtype,
+      backend,
+    });
   } else {
     // Assume this is a nested array object, infer the shape.
     if (!shape) {
@@ -678,17 +680,18 @@ export function array(
     if (typeof flat[0] === "boolean") {
       dtype = dtype ?? DType.Bool;
       const data = new Int32Array(flat.map((x) => (x ? 1 : 0)));
-      return arrayFromData(data, { dtype, backend }).reshape(shape);
+      return arrayFromData(data, shape, { dtype, backend });
     } else {
       dtype = dtype ?? DType.Float32;
       const data = new Float32Array(flat as number[]);
-      return arrayFromData(data, { dtype, backend }).reshape(shape);
+      return arrayFromData(data, shape, { dtype, backend });
     }
   }
 }
 
 function arrayFromData(
   data: Float32Array | Int32Array,
+  shape: number[],
   { dtype, backend: backendType }: DTypeAndBackend = {},
 ): Array {
   const backend = getBackend(backendType);
@@ -699,7 +702,7 @@ function arrayFromData(
     const slot = backend.malloc(data.byteLength, data.buffer);
     return new Array(
       slot,
-      ShapeTracker.fromShape([data.length]),
+      ShapeTracker.fromShape(shape),
       DType.Float32,
       backend,
     );
@@ -710,7 +713,7 @@ function arrayFromData(
     const slot = backend.malloc(data.byteLength, data.buffer);
     return new Array(
       slot,
-      ShapeTracker.fromShape([data.length]),
+      ShapeTracker.fromShape(shape),
       dtype ?? DType.Int32,
       backend,
     );

@@ -41,7 +41,7 @@ export class Var {
   }
 }
 
-/** Literal in a Jaxpr expressio. Currently, only scalars are supported. */
+/** Literal in a Jaxpr expression. Currently, only scalars are supported. */
 export class Lit {
   readonly dtype: DType;
   readonly value: number;
