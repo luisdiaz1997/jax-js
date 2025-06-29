@@ -15,6 +15,7 @@ import {
   flattenFun,
   flip,
   fullRaise,
+  idiv,
   less,
   max,
   min,
@@ -101,6 +102,12 @@ const jvpRules: Record<Primitive, JvpRule> = {
   },
   [Primitive.Mul]([x, y], [dx, dy]) {
     return [[x.ref.mul(y.ref)], [x.mul(dy).add(dx.mul(y))]];
+  },
+  [Primitive.Idiv]([x, y], [dx, dy]) {
+    dx.dispose(), dy.dispose();
+    const z = idiv(x, y);
+    const dz = zerosLike(z);
+    return [[z], [dz]];
   },
   [Primitive.Neg]([x], [dx]) {
     return [[x.neg()], [dx.neg()]];

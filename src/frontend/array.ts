@@ -563,6 +563,9 @@ export class Array extends Tracer {
       [Primitive.Mul]([x, y]) {
         return [x.#binary(AluOp.Mul, y)];
       },
+      [Primitive.Idiv]([x, y]) {
+        return [x.#binary(AluOp.Idiv, y)];
+      },
       [Primitive.Neg]([x]) {
         return [zerosLike(x).#binary(AluOp.Sub, x)];
       },
@@ -827,7 +830,8 @@ const implRules: Record<Primitive, ImplRule> = Array._implRules();
 
 export function zerosLike(val: TracerValue): Array {
   const aval = getAval(val);
-  return zeros(aval.shape, { dtype: aval.dtype });
+  // TODO: Use correct device.
+  return zeros(aval.shape, { dtype: aval.dtype }); // Does not dispose val.
 }
 
 /** Return a new array of given shape and type, filled with zeros. */

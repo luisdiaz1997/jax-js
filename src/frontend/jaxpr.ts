@@ -270,6 +270,12 @@ export class Jaxpr implements FpHashable {
         } else {
           newEqns.push(eqn);
         }
+      } else if (eqn.primitive === Primitive.Idiv) {
+        const [a, b] = inputs;
+        const c = eqn.outBinders[0];
+        if (atomIsLit(b, 1)) {
+          context.set(c, a);
+        }
       } else {
         newEqns.push(eqn);
       }
@@ -669,6 +675,7 @@ function vectorizedUnopAbstractEval([x]: ShapedArray[]) {
 export const abstractEvalRules: Record<Primitive, AbstractEvalRule> = {
   [Primitive.Add]: binopAbstractEval,
   [Primitive.Mul]: binopAbstractEval,
+  [Primitive.Idiv]: binopAbstractEval,
   [Primitive.Neg]: vectorizedUnopAbstractEval,
   [Primitive.Reciprocal]: vectorizedUnopAbstractEval,
   [Primitive.Sin]: vectorizedUnopAbstractEval,

@@ -31,7 +31,7 @@ export function prod(arr: number[]): number {
 }
 
 /** Shorthand for integer division, like in Python. */
-export function idiv(a: number, b: number): number {
+export function intdiv(a: number, b: number): number {
   return Math.floor(a / b);
 }
 

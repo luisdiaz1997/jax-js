@@ -11,6 +11,7 @@ import { DEBUG, prod, range } from "../utils";
 export enum Primitive {
   Add = "add",
   Mul = "mul",
+  Idiv = "idiv",
   Neg = "neg",
   Reciprocal = "reciprocal",
   Sin = "sin",
@@ -42,6 +43,10 @@ export function add(x: TracerValue, y: TracerValue) {
 
 export function mul(x: TracerValue, y: TracerValue) {
   return bind1(Primitive.Mul, [x, y]);
+}
+
+export function idiv(x: TracerValue, y: TracerValue) {
+  return bind1(Primitive.Idiv, [x, y]);
 }
 
 export function neg(x: TracerValue) {
@@ -337,6 +342,9 @@ export abstract class Tracer {
 
   /** Divide an array by this one. */
   div(other: this | TracerValue): this {
+    if (this.dtype === DType.Int32) {
+      return idiv(this, other) as this;
+    }
     return this.mul(reciprocal(other));
   }
 

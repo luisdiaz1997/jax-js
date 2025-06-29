@@ -10,6 +10,7 @@ import {
   cos,
   flattenFun,
   fullRaise,
+  idiv,
   max,
   min,
   mul,
@@ -211,6 +212,7 @@ function vectorizedUnopBatchingRule(op: (x: Tracer) => Tracer) {
 const vmapRules: Partial<Record<Primitive, VmapRule>> = {
   [Primitive.Add]: broadcastBatcher(add),
   [Primitive.Mul]: broadcastBatcher(mul),
+  [Primitive.Idiv]: broadcastBatcher(idiv),
   [Primitive.Neg]: vectorizedUnopBatchingRule(neg),
   [Primitive.Reciprocal]: vectorizedUnopBatchingRule(reciprocal),
   [Primitive.Sin]: vectorizedUnopBatchingRule(sin),

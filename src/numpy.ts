@@ -1,4 +1,4 @@
-import { DType } from "./alu";
+import { DType, isFloatDtype } from "./alu";
 import {
   arange,
   array,
@@ -390,4 +390,25 @@ export function square(x: ArrayLike): Array {
 export function tan(x: ArrayLike): Array {
   x = fudgeArray(x);
   return sin(x.ref).div(cos(x));
+}
+
+/** Calculates the floating-point division of x by y element-wise. */
+export function trueDivide(x: ArrayLike, y: ArrayLike): Array {
+  x = fudgeArray(x);
+  y = fudgeArray(y);
+  if (!isFloatDtype(x.dtype) || !isFloatDtype(y.dtype)) {
+    // TODO: Automatically cast to float if possible?
+    throw new TypeError(
+      `trueDivide: x and y must be floating-point arrays, got ${x.dtype} and ${y.dtype}`,
+    );
+  }
+  return x.div(y);
+}
+
+/** Alias of `jax.numpy.trueDivide()`. */
+export const divide = trueDivide;
+
+/** Round input to the nearest integer towards zero. */
+export function trunc(x: ArrayLike): Array {
+  return core.idiv(x, 1) as Array; // Integer division truncates the decimal part.
 }

@@ -20,7 +20,7 @@
  */
 
 import { AluExp } from "./alu";
-import { deepEqual, idiv, isPermutation, prod, rep, zip } from "./utils";
+import { deepEqual, intdiv, isPermutation, prod, rep, zip } from "./utils";
 
 type Pair = [number, number];
 
@@ -114,19 +114,19 @@ function reshapeMask(
     const nextStride = newDim * currStride;
     // Need to split mask
     if (oldDim === nextStride) {
-      newMask.push([idiv(l, currStride), idiv(r - 1, currStride) + 1]);
+      newMask.push([intdiv(l, currStride), intdiv(r - 1, currStride) + 1]);
       currStride = 1;
       [oldDim, newDim, mask] = [rShape(), rNewShape(), rMasks()];
     } else if (oldDim > nextStride) {
       if (oldDim % nextStride !== 0) return null;
       if (
         (l % nextStride !== 0 || r % nextStride !== 0) &&
-        idiv(l, nextStride) !== idiv(r - 1, nextStride)
+        intdiv(l, nextStride) !== intdiv(r - 1, nextStride)
       )
         return null; // Stride doesn't divide evenly into the new mask.
       newMask.push([
-        idiv(l % nextStride, currStride),
-        idiv((r - 1) % nextStride, currStride) + 1,
+        intdiv(l % nextStride, currStride),
+        intdiv((r - 1) % nextStride, currStride) + 1,
       ]);
       [currStride, newDim] = [nextStride, rNewShape()];
     } else {

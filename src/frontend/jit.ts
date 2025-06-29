@@ -370,6 +370,7 @@ function reshapeJit(
 const jitRules: Partial<Record<Primitive, JitRule>> = {
   [Primitive.Add]: broadcastedJit(([a, b]) => AluExp.add(a, b)),
   [Primitive.Mul]: broadcastedJit(([a, b]) => AluExp.mul(a, b)),
+  [Primitive.Idiv]: broadcastedJit(([a, b]) => AluExp.idiv(a, b)),
   [Primitive.Neg]: broadcastedJit(([a]) =>
     AluExp.sub(AluExp.const(a.dtype, 0), a),
   ),

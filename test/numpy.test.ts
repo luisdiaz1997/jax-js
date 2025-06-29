@@ -527,11 +527,14 @@ suite.each(devices)("device:%s", (device) => {
       expect(dx).toBeAllclose([-1, -0.25, -1 / 9]);
     });
 
-    test("called via Array.div()", () => {
+    test("called via Array.div() and jax.numpy.divide()", () => {
       const x = np.array([1, 2, 3]);
       const y = np.array([4, 5, 6]);
-      const z = x.div(y);
+      const z = x.ref.div(y.ref);
       expect(z).toBeAllclose([0.25, 0.4, 0.5]);
+
+      const w = np.divide(x, y);
+      expect(w.js()).toBeAllclose([0.25, 0.4, 0.5]);
     });
   });
 });

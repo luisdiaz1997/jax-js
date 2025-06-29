@@ -8,7 +8,7 @@ export enum DType {
   Complex64 = "complex64", // TODO: unimplemented
 }
 
-const isFloatDtype = (dtype: DType) =>
+export const isFloatDtype = (dtype: DType) =>
   dtype === DType.Float32 || dtype === DType.Complex64;
 
 /**
@@ -28,7 +28,14 @@ export class AluExp implements FpHashable {
     readonly dtype: DType,
     readonly src: AluExp[],
     readonly arg: any = undefined,
-  ) {}
+  ) {
+    if (
+      [AluOp.Sin, AluOp.Cos, AluOp.Reciprocal].includes(op) &&
+      !isFloatDtype(dtype)
+    ) {
+      throw new TypeError(`Unsupported dtype for ${op}: ${dtype}`);
+    }
+  }
 
   static add(a: AluExp, b: AluExp): AluExp {
     return new AluExp(AluOp.Add, a.dtype, [a, b]);
@@ -52,18 +59,12 @@ export class AluExp implements FpHashable {
     return new AluExp(AluOp.Max, a.dtype, [a, b]);
   }
   static sin(a: AluExp): AluExp {
-    if (!isFloatDtype(a.dtype))
-      throw new TypeError(`Unsupported dtype for Sin: ${a.dtype}`);
     return new AluExp(AluOp.Sin, a.dtype, [a]);
   }
   static cos(a: AluExp): AluExp {
-    if (!isFloatDtype(a.dtype))
-      throw new TypeError(`Unsupported dtype for Cos: ${a.dtype}`);
     return new AluExp(AluOp.Cos, a.dtype, [a]);
   }
   static reciprocal(a: AluExp): AluExp {
-    if (!isFloatDtype(a.dtype))
-      throw new TypeError(`Unsupported dtype for Reciprocal: ${a.dtype}`);
     return new AluExp(AluOp.Reciprocal, a.dtype, [a]);
   }
   static cast(dtype: DType, a: AluExp): AluExp {
