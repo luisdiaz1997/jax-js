@@ -62,7 +62,6 @@ npm test
 
 ## Next on Eric's mind
 
-- Test for if you take sin(), cos() of an int/bool
 - Start working on first neural network
 - Investigate why jax-js Matmul is 2x slower on Safari TP than unroll kernel
 - How many threads to create per workgroup, depends on hardware

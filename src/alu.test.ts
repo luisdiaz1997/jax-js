@@ -58,3 +58,9 @@ test("AluExp has .min and .max", () => {
   expect(e2.min).toEqual(0);
   expect(e2.max).toEqual(28);
 });
+
+test("AluExp raises TypeError for unsupported dtypes", () => {
+  expect(() => AluExp.sin(AluExp.bool(true))).toThrow(TypeError);
+  expect(() => AluExp.cos(AluExp.bool(false))).toThrow(TypeError);
+  expect(() => AluExp.reciprocal(AluExp.bool(true))).toThrow(TypeError);
+});
