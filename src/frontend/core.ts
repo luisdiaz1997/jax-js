@@ -424,8 +424,6 @@ export abstract class Tracer {
     return reshape(this, shape) as this;
   }
 
-  // TODO: slice();
-
   // Below this line are composite operations built from primitives.
 
   /** Subtract an array from this one. */
@@ -459,6 +457,91 @@ export abstract class Tracer {
   /** Flatten the array without changing its data. */
   ravel(): this {
     return this.reshape(-1);
+  }
+
+  /**
+   * Slice an array along one or more axes.
+   *
+   * This is the equivalent of slicing in Python, e.g. `x[1:3, 2, :, None]`. To
+   * mimic this in JavaScript, we would write:
+   *
+   * ```js
+   * x.slice([1, 3], 2, [], null);
+   * ```
+   *
+   * The `slice` method accepts a variable number of arguments, each of which
+   * can be a number, an empty array, a single-element array, a two-element
+   * array, or `null`. The arguments are interpreted as follows:
+   *
+   * - A number `n` means to access the `n`-th element along that axis, removing
+   *   that axis from the resulting shape.
+   * - An empty array `[]` means to keep that axis as-is, like `:` in Python.
+   * - A single-element array `[i]` means to start slicing from index `i`
+   *   (inclusive) to the end of the axis, like `x[i:]`.
+   * - A two-element array `[i, j]` means to slice from index `i` (inclusive)
+   *   to index `j` (exclusive), like `x[i:j]`.
+   * - `null` means to add a new axis at that position, like `np.newaxis`.
+   *
+   * Like in Python, negative indices are supported, which count from the end of
+   * the axis. For example, `-1` means the last element.
+   *
+   * Strided slices are not yet implemented, so you cannot write `x[::2]` or
+   * similar.
+   *
+   * "Advanced indexing" by integer or boolean arrays is not supported.
+   */
+  slice(...index: (number | [] | [number] | [number, number] | null)[]): this {
+    const checkBounds = (n: number, i: number): number => {
+      if (i > n || i < -n)
+        throw new RangeError(`Index ${i} out of bounds for axis of size ${n}`);
+      return i < 0 ? n + i : i;
+    };
+
+    const slice: [number, number][] = [];
+    const finalShape: number[] = [];
+    let needsReshape = false;
+    let axis = 0;
+    for (const value of index) {
+      if (value === null) {
+        // Add a new axis at this position.
+        finalShape.push(1);
+        needsReshape = true;
+      } else if (typeof value === "number") {
+        // Access the i-th element along this axis.
+        if (axis >= this.shape.length) throw new RangeError("Too many indices");
+        const i = checkBounds(this.shape[axis++], value);
+        slice.push([i, i + 1]);
+        needsReshape = true;
+      } else if (Array.isArray(value)) {
+        if (axis >= this.shape.length) throw new RangeError("Too many indices");
+        const n = this.shape[axis++];
+        if (value.length === 0) {
+          // Keep this axis as-is, like `:`.
+          finalShape.push(n);
+          slice.push([0, n]);
+        } else if (value.length === 1) {
+          // Slice from index i to the end, like `x[i:]`.
+          const i = checkBounds(n, value[0]);
+          finalShape.push(n - i);
+          slice.push([i, n]);
+        } else if (value.length === 2) {
+          // Slice from index i to index j, like `x[i:j]`.
+          const [i, j] = value.map((v) => checkBounds(n, v));
+          if (i > j) throw new RangeError(`Slice start at ${i} > end at ${j}`);
+          finalShape.push(j - i);
+          slice.push([i, j]);
+        }
+      } else {
+        throw new TypeError(`Invalid slice argument: ${JSON.stringify(value)}`);
+      }
+    }
+    while (axis < this.shape.length) {
+      // If we didn't specify an index for this axis, keep it as-is.
+      slice.push([0, this.shape[axis]]);
+      finalShape.push(this.shape[axis++]);
+    }
+    const result = shrink(this, slice);
+    return (needsReshape ? reshape(result, finalShape) : result) as this;
   }
 }
 

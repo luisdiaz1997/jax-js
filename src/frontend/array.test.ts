@@ -121,4 +121,33 @@ suite.each(devices)("device:%s", (device) => {
       expect(vals[i]).toEqual(i + 1 < 2500 ? 1 : 0);
     }
   });
+
+  test("slicing arrays", () => {
+    const x = array([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+
+    // Basic slicing and element access.
+    expect(x.ref.slice(0, 0).js()).toEqual(1);
+    expect(x.ref.slice(0, 2).js()).toEqual(3);
+    expect(x.ref.slice(1, 2).js()).toEqual(6);
+    expect(x.ref.slice(1).js()).toEqual([4, 5, 6]);
+    expect(x.ref.slice().js()).toEqual([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+
+    // Try slicing with negative indices.
+    expect(x.ref.slice(-1, -1).js()).toEqual(6);
+    expect(x.ref.slice(-2, -1).js()).toEqual(3);
+    expect(x.ref.slice(-1, -3).js()).toEqual(4);
+
+    // Try adding new axes.
+    expect(x.ref.slice(0, 0, null).js()).toEqual([1]);
+    expect(x.ref.slice(0, null, 0).js()).toEqual([1]);
+    expect(x.ref.slice(null).js()).toEqual([x.ref.js()]);
+
+    x.dispose();
+  });
 });
