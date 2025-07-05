@@ -128,7 +128,12 @@ export class Array extends Tracer {
   #rc: number; // reference count for this specific Array object
   #pendingSet: Set<PendingExecute> | null; // only if source is `Slot`
 
-  /** @ignore */
+  /**
+   * @ignore
+   * Constructs an array from source, shape and backend. Note that if the source
+   * is a backend `Slot`, this constructor _takes ownership_ of the slot. It
+   * will be freed when the array is disposed.
+   */
   constructor(
     source: AluExp | Slot,
     st: ShapeTracker,
@@ -144,10 +149,6 @@ export class Array extends Tracer {
     this.#backend = backend;
     this.#rc = 1;
     this.#pendingSet = new Set(pending);
-
-    if (!(source instanceof AluExp)) {
-      backend.incRef(source); // decRef() is called when this.#rc hits 0.
-    }
   }
 
   /** @ignore */
@@ -176,7 +177,7 @@ export class Array extends Tracer {
 
   dispose() {
     this.#check();
-    if (this.#rc-- === 0) {
+    if (--this.#rc === 0) {
       // Free any pending executables that haven't been submitted yet.
       for (const exe of this.#pending) exe.updateRc(-1);
       // If this has an array source, free it from the backend.
@@ -223,6 +224,7 @@ export class Array extends Tracer {
     this.#check();
     const pending = this.#pending;
     for (const exe of pending) exe.updateRc(+1);
+    if (typeof this.#source === "number") this.#backend.incRef(this.#source);
     const ar = new Array(this.#source, st, this.#dtype, this.#backend, pending);
     this.dispose(); // After constructing Array, so we don't free this.#source early.
     return ar;

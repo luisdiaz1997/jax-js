@@ -238,10 +238,14 @@ const vmapRules: Partial<{ [P in Primitive]: VmapRule<P> }> = {
   // TODO: where, transpose, broadcast, reshape, flip, shrink, pad, gather
   [Primitive.JitCall](axisSize, args, dims, { jaxpr }) {
     const { newJaxpr, newConsts } = vmapJaxpr(jaxpr, axisSize, dims);
-    const outs = bind(Primitive.JitCall, [...newConsts, ...args], {
-      jaxpr: newJaxpr,
-      numConsts: newConsts.length,
-    });
+    const outs = bind(
+      Primitive.JitCall,
+      [...newConsts.map((c) => c.ref), ...args],
+      {
+        jaxpr: newJaxpr,
+        numConsts: newConsts.length,
+      },
+    );
     return [outs, rep(outs.length, 0)];
   },
 };

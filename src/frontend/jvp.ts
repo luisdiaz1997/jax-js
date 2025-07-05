@@ -218,7 +218,7 @@ const jvpRules: { [P in Primitive]: JvpRule<P> } = {
     const { newJaxpr, newConsts } = jvpJaxpr(jaxpr);
     const outs = bind(
       Primitive.JitCall,
-      [...newConsts, ...primals, ...tangents],
+      [...newConsts.map((c) => c.ref), ...primals, ...tangents],
       {
         jaxpr: newJaxpr,
         numConsts: newConsts.length,

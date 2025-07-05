@@ -28,6 +28,10 @@ export type JitStep =
       output: JitId;
     }
   | {
+      type: "incref";
+      input: JitId;
+    }
+  | {
       type: "free";
       input: JitId;
     };
@@ -77,12 +81,19 @@ export class JitProgram {
           scope.set(step.output, slot);
           break;
         }
+        case "incref": {
+          const slot = scope.get(step.input)!;
+          this.backend.incRef(slot);
+          break;
+        }
         case "free": {
           const slot = scope.get(step.input)!;
           this.backend.decRef(slot);
           scope.delete(step.input);
           break;
         }
+        default:
+          step satisfies never;
       }
     }
     return {
@@ -138,13 +149,19 @@ class JitProgramBuilder {
     return id;
   }
 
+  pushIncref(id: JitId): void {
+    this.steps.push({
+      type: "incref",
+      input: id,
+    });
+  }
+
   insertFreeSteps(outputIds: JitId[]): void {
     // Only free malloc'd ids that are not used in the output.
     //
     // Intermediates are allowed to be freed independently, since they are
     // guaranteed to be unused elsewhere after the JitProgram is executed.
-    // Meanwhile, inputs and consts need higher-level reference counting on the
-    // Array objects, so we don't free them here. We update it at the end.
+    // Meanwhile, inputs and consts are owned / freed elsewhere.
     const ids = this.steps
       .filter((s) => s.type === "malloc")
       .map((s) => s.output);
@@ -302,6 +319,22 @@ export function jitCompile(
       outputIds.push(builder.pushLit(out));
     } else {
       out satisfies never; // static check
+    }
+  }
+
+  // Each output should have its own backend reference. If an output slot is
+  // returned twice, or if an input/const is returned directly, insert "incref"
+  // steps to balance the books.
+  const outputNeedsRef = new Set<JitId>([
+    ...range(nargs), // inputs
+    ...builder.steps.filter((s) => s.type === "const").map((s) => s.output),
+  ]);
+  for (const outputId of outputIds) {
+    if (outputNeedsRef.has(outputId)) {
+      builder.pushIncref(outputId);
+    } else {
+      // If this output is seen again, increment its ref at that point.
+      outputNeedsRef.add(outputId);
     }
   }
 

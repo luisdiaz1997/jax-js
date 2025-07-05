@@ -749,10 +749,14 @@ const transposeRules: Partial<{ [P in Primitive]: TransposeRule<P> }> = {
     const undefPrimals = args.map((x) => x instanceof UndefPrimal);
     const { newJaxpr, newConsts } = transposeJaxpr(jaxpr, undefPrimals);
     const residuals = args.filter((x, i) => !undefPrimals[i]) as Tracer[];
-    const outs = bind(Primitive.JitCall, [...newConsts, ...residuals, ...cts], {
-      jaxpr: newJaxpr,
-      numConsts: newConsts.length,
-    });
+    const outs = bind(
+      Primitive.JitCall,
+      [...newConsts.map((c) => c.ref), ...residuals, ...cts],
+      {
+        jaxpr: newJaxpr,
+        numConsts: newConsts.length,
+      },
+    );
     // Now pull cotangents back to the corresponding UndefPrimal inputs.
     let i = 0;
     return undefPrimals.map((isUndef) => (isUndef ? outs[i++] : null));
@@ -805,14 +809,16 @@ function vjpFlat(
   primalsIn: Tracer[],
 ): [Tracer[], (...cotangents: Tracer[]) => Tracer[]] {
   const { primalsOut, jaxpr, consts } = linearizeFlatUtil(f, primalsIn);
-  const transposeInputs = [
-    ...consts.map((c) => c.ref),
-    // Explcitly list which arguments should be transposed.
-    ...primalsIn.map((t) => new UndefPrimal(t.aval)),
-  ];
   // Pullback cotangents to the UndefPrimal transpose inputs.
-  const fVjp = (...cotangents: Tracer[]) =>
-    evalJaxprTransposed(jaxpr, transposeInputs, cotangents);
+  const fVjp = (...cotangents: Tracer[]) => {
+    // TODO: Figure out when to free `consts`.
+    const transposeInputs = [
+      ...consts.map((c) => c.ref),
+      // Explcitly list which arguments should be transposed.
+      ...primalsIn.map((t) => new UndefPrimal(t.aval)),
+    ];
+    return evalJaxprTransposed(jaxpr, transposeInputs, cotangents);
+  };
   return [primalsOut, fVjp];
 }
 
@@ -847,7 +853,7 @@ export function vjp(
 export function grad(f: (...primals: any) => Tracer) {
   const valueAndGradFn = valueAndGrad(f);
   return (...x: any) => {
-    const [y, dx] = valueAndGradFn(x);
+    const [y, dx] = valueAndGradFn(...x);
     y.dispose();
     return dx;
   };
@@ -866,7 +872,9 @@ export function valueAndGrad(f: (...primals: any) => Tracer) {
     if (y.dtype !== DType.Float32) {
       throw new TypeError("grad currently only supports float32");
     }
-    return [y, fVjp(pureArray(1))[0]] as [any, any];
+    const [ct, ...rest] = fVjp(pureArray(1));
+    for (const r of rest) r.dispose();
+    return [y, ct] as [any, any];
   };
 }
 
