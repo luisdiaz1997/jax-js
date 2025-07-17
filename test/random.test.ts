@@ -25,18 +25,18 @@ suite.each(devices)("device:%s", (device) => {
   });
 
   test("random split is consistent with jax", () => {
-    const splits = random.split(random.key(0), 3);
+    const splits = random.split(random.key(1), 3);
     expect(splits.shape).toEqual([3, 2]);
     expect(splits.dtype).toEqual(np.uint32);
     expect(splits.js()).toEqual([
-      [1797259609, 2579123966],
-      [928981903, 3453687069],
-      [4146024105, 2718843009],
+      [507451445, 1853169794],
+      [1948878966, 4237131848],
+      [2441914641, 3819641963],
     ]);
   });
 
   test("generate uniform random", () => {
-    const key = random.key(0);
+    const key = random.key(42);
     const [a, b, c] = random.split(key, 3);
 
     const x = random.uniform(a);
@@ -45,14 +45,20 @@ suite.each(devices)("device:%s", (device) => {
     const y = random.uniform(b, [0]);
     expect(y.js()).toEqual([]);
 
-    const z = random.uniform(c, [2, 3]);
+    const z = random.uniform(c, [2, 3], { minval: 10, maxval: 15 });
     expect(z.shape).toEqual([2, 3]);
     expect(z.dtype).toEqual(np.float32);
     const zx = z.js() as number[][];
     for (let i = 0; i < 2; i++) {
       for (let j = 0; j < 3; j++) {
-        expect(zx[i][j]).toBeWithinRange(0, 1);
+        expect(zx[i][j]).toBeWithinRange(10, 15);
       }
     }
+  });
+
+  test("uniform is consistent with jax", () => {
+    // jax.random.uniform(jax.random.key(51), shape=(4,))
+    const x = random.uniform(random.key(51), [4]);
+    expect(x).toBeAllclose([0.471269, 0.12344253, 0.17550635, 0.5663593]);
   });
 });

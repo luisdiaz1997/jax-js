@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { AluExp, AluOp, DType } from "./alu";
+import { AluExp, DType } from "./alu";
 
 test("AluExp can be evaluated", () => {
   const e = AluExp.i32(3);
@@ -160,5 +160,5 @@ test("AluOp.Threefry2x32", () => {
   const c0 = AluExp.u32(0);
   const c1 = AluExp.u32(0);
   const exp = AluExp.threefry2x32(k0, k1, c0, c1);
-  expect(exp.evaluate({})).toBe(1797259609 ^ 2579123966); // x0 ^ x1
+  expect(exp.evaluate({})).toBe((1797259609 ^ 2579123966) >>> 0); // x0 ^ x1
 });

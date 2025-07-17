@@ -27,6 +27,24 @@ export const byteWidth = (dtype: DType): number => {
 export const isFloatDtype = (dtype: DType) =>
   dtype === DType.Float32 || dtype === DType.Complex64;
 
+export function dtypedArray(
+  dtype: DType,
+  data: ArrayBuffer | number[],
+): Float32Array | Int32Array | Uint32Array {
+  switch (dtype) {
+    case DType.Float32:
+      return new Float32Array(data);
+    case DType.Int32:
+      return new Int32Array(data);
+    case DType.Uint32:
+      return new Uint32Array(data);
+    case DType.Bool:
+      return new Int32Array(data); // Booleans are stored as 0/1 in int32.
+    default:
+      throw new Error(`Unimplemented dtype: ${dtype}`);
+  }
+}
+
 /**
  * Mathematical expression on scalar values.
  *
@@ -652,7 +670,7 @@ export class AluExp implements FpHashable {
           x.evaluate(context, globals),
         );
         const [x0, x1] = threefry2x32(k0, k1, c0, c1);
-        if (this.arg === "xor") return x0 ^ x1;
+        if (this.arg === "xor") return (x0 ^ x1) >>> 0;
         else if (this.arg === 0) return x0;
         else if (this.arg === 1) return x1;
         else throw new Error(`Invalid Threefry2x32 mode: ${this.arg}`);

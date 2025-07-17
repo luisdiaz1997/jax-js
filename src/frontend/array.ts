@@ -6,6 +6,7 @@ import {
   AluVar,
   byteWidth,
   DType,
+  dtypedArray,
   Kernel,
   Reduction,
 } from "../alu";
@@ -37,7 +38,7 @@ import { jitCompile } from "./jit";
 const JsArray = globalThis.Array;
 
 // Don't realize expression arrays smaller than this size.
-const inlineArrayLimit = 1000;
+const inlineArrayLimit = 128;
 
 export type ArrayLike = Array | number | boolean;
 
@@ -615,11 +616,7 @@ export class Array extends Tracer {
     const byteCount = byteWidth(this.#dtype) * prod(this.shape);
     const buf = await this.#backend.read(this.#source as Slot, 0, byteCount);
     this.dispose();
-    return this.dtype === DType.Float32
-      ? new Float32Array(buf)
-      : this.dtype === DType.Uint32
-        ? new Uint32Array(buf)
-        : new Int32Array(buf);
+    return dtypedArray(this.dtype, buf);
   }
 
   /** Wait for this array to be placed on the backend, if needed. */
@@ -657,11 +654,7 @@ export class Array extends Tracer {
     const byteCount = byteWidth(this.#dtype) * prod(this.shape);
     const buf = this.#backend.readSync(this.#source as Slot, 0, byteCount);
     this.dispose();
-    return this.dtype === DType.Float32
-      ? new Float32Array(buf)
-      : this.dtype === DType.Uint32
-        ? new Uint32Array(buf)
-        : new Int32Array(buf);
+    return dtypedArray(this.dtype, buf);
   }
 
   /**
@@ -720,7 +713,10 @@ export class Array extends Tracer {
           return [x.#unary(AluOp.Bitcast, dtype)];
         } else {
           // Just keep the same data / source, but change the dtype.
-          const y = new Array(x.#source, x.#st, dtype, x.#backend, x.#pending);
+          x.#backend.incRef(x.#source);
+          const pending = x.#pending;
+          for (const exe of pending) exe.updateRc(+1);
+          const y = new Array(x.#source, x.#st, dtype, x.#backend, pending);
           x.dispose();
           return [y];
         }
@@ -909,12 +905,7 @@ export function array(
       return arrayFromData(data, shape, { dtype, device });
     } else {
       dtype = dtype ?? DType.Float32;
-      const data =
-        dtype === DType.Int32
-          ? new Int32Array(flat as number[])
-          : dtype === DType.Uint32
-            ? new Uint32Array(flat as number[])
-            : new Float32Array(flat as number[]);
+      const data = dtypedArray(dtype, flat as number[]);
       return arrayFromData(data, shape, { dtype, device });
     }
   }

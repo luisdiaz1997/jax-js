@@ -1,8 +1,7 @@
 // Port of the `jax.random` module.
 
-import { type Device } from "./backend";
-import { randomBits } from "./frontend/core";
-import { array, Array, DType, float32, full, stack } from "./numpy";
+import { bitcast, randomBits } from "./frontend/core";
+import { array, Array, DType, scalar, stack } from "./numpy";
 
 function validateKeyShape(key: Array): number[] {
   if (key.ndim === 0) {
@@ -59,18 +58,26 @@ export function bits(key: Array, shape: number[] = []): Array {
   ) as Array;
 }
 
-/** Sample uniform random values in [minval, maxval) with given shape/dtype. */
+/** Sample uniform random values in [minval, maxval) with given shape. */
 export function uniform(
   key: Array,
   shape: number[] = [],
-  {
-    minval = 0,
-    maxval = 1,
-    dtype = float32,
-    device,
-  }: { minval?: number; maxval?: number; dtype?: DType; device?: Device } = {},
+  { minval = 0, maxval = 1 }: { minval?: number; maxval?: number } = {},
 ): Array {
-  void key;
-  void maxval;
-  return full(shape, minval, { dtype, device });
+  if (minval >= maxval) {
+    throw new Error(`Invalid range: [${minval}, ${maxval}).`);
+  }
+  // Float32 has sign bit, 8 bits of exponent, and 23 bits of mantissa.
+  const mantissa = bits(key, shape).div(
+    scalar(1 << 9, { dtype: DType.Uint32, device: key.device }),
+  );
+  const float12 = mantissa.add(
+    scalar(0x3f800000, { dtype: DType.Uint32, device: key.device }),
+  ); // Add 1.0 in IEEE 754, now it's a float in [1, 2).
+  const rand = bitcast(float12, DType.Float32).sub(1) as Array; // [0, 1) range
+  if (minval === 0 && maxval === 1) {
+    return rand;
+  } else {
+    return rand.mul(maxval - minval).add(minval);
+  }
 }

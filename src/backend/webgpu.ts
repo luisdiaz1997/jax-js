@@ -219,7 +219,7 @@ function pipelineSource(device: GPUDevice, kernel: Kernel): ShaderInfo {
     console.info(`kernel.exp: ${kernel.exp}\ntune.exp: ${tune.exp}`);
   }
 
-  const { nargs, reduction: re } = kernel;
+  const { nargs } = kernel;
   const args = Array.from({ length: nargs }, (_, i) => `in${i}`);
 
   // binding(0..n-1): input buffers
@@ -264,7 +264,7 @@ function pipelineSource(device: GPUDevice, kernel: Kernel): ShaderInfo {
     );
   }
 
-  const resultTy = dtypeToWgsl(re?.dtype ?? tune.exp.dtype, true);
+  const resultTy = dtypeToWgsl(kernel.dtype, true);
   emit(
     `@group(0) @binding(${nargs}) var<storage, read_write> result : array<${resultTy}>;`,
   );

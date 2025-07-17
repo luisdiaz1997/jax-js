@@ -1,4 +1,4 @@
-import { AluOp, DType, Kernel } from "../alu";
+import { AluOp, dtypedArray, Kernel } from "../alu";
 import { Backend, Device, Executable, Slot, SlotError } from "../backend";
 import { tuneNullopt } from "../tuner";
 
@@ -81,14 +81,9 @@ export class CPUBackend implements Backend {
     const inputArrays = inputBuffers.map((buf, i) => {
       const dtype = usedArgs.get(i);
       if (!dtype) return null!; // This arg is unused, so we just blank it out.
-      return dtype === DType.Float32
-        ? new Float32Array(buf)
-        : new Int32Array(buf);
+      return dtypedArray(dtype, buf);
     });
-    const outputArray =
-      exp.dtype === DType.Float32
-        ? new Float32Array(outputBuffers[0])
-        : new Int32Array(outputBuffers[0]);
+    const outputArray = dtypedArray(kernel.dtype, outputBuffers[0]);
 
     const globals = (gid: number, bufidx: number) => {
       if (gid < 0 || gid >= inputArrays.length)
