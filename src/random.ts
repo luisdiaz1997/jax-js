@@ -2,7 +2,7 @@
 
 import { type Device } from "./backend";
 import { randomBits } from "./frontend/core";
-import { array, Array, DType, float32, full } from "./numpy";
+import { array, Array, DType, float32, full, stack } from "./numpy";
 
 function validateKeyShape(key: Array): number[] {
   if (key.ndim === 0) {
@@ -24,14 +24,29 @@ export function key(seed: number): Array {
 }
 
 /** Splits a PRNG key into `num` new keys by adding a leading axis. */
-export function split(key: Array, num: number = 2): Array[] {
-  if (num < 0 || !Number.isInteger(num)) {
-    throw new Error(`Invalid number of splits: ${num}`);
+export function split(key: Array, num: number | number[] = 2): Array {
+  const shape = typeof num === "number" ? [num] : num;
+  for (const len of shape) {
+    if (len <= 0 || !Number.isInteger(len)) {
+      throw new Error(
+        `Invalid split length: ${len}. Must be a positive integer.`,
+      );
+    }
   }
-  const ret: Array[] = [];
-  for (let i = 0; i < num; i++) ret.push(key.ref); // TODO: Actually split the key.
-  key.dispose();
-  return ret;
+
+  const keyShape = validateKeyShape(key);
+  const k0 = key.ref.slice(...keyShape.map(() => null), 0);
+  const k1 = key.slice(...keyShape.map(() => null), 1);
+  return stack(
+    // It's inefficient to calculate the PRNG key twice, then join the halves
+    // together. But this allows us to avoid refactoring AluExp to support
+    // multiple outputs, while remaining consistent with JAX.
+    [
+      randomBits(k0.ref, k1.ref, shape, 0) as Array,
+      randomBits(k0, k1, shape, 1) as Array,
+    ],
+    -1,
+  );
 }
 
 /** Sample uniform bits in the form of unsigned integers. */
