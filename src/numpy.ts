@@ -14,7 +14,6 @@ import {
   zeros,
 } from "./frontend/array";
 import * as core from "./frontend/core";
-import { jit } from "./frontend/jaxpr";
 import * as vmapModule from "./frontend/vmap";
 import { checkAxis, deepEqual, prod as iprod, range, rep } from "./utils";
 
@@ -532,13 +531,14 @@ export function allclose(
 }
 
 /** Matrix product of two arrays. */
-export const matmul = jit(function matmul(x: Array, y: Array) {
-  if (x.ndim === 0 || y.ndim === 0) {
+export function matmul(x: ArrayLike, y: ArrayLike) {
+  if (ndim(x) === 0 || ndim(y) === 0) {
     throw new TypeError("matmul: x and y must be at least 1D");
   }
+  (x = x as Array), (y = y as Array);
   if (y.ndim === 1) {
     // Matrix-vector product
-    return x.mul(y).sum(x.ndim - 1);
+    return core.dot(x, y) as Array;
   }
 
   // Otherwise, we multiply x: [..., N, K] and y: [..., K, M]
@@ -551,18 +551,19 @@ export const matmul = jit(function matmul(x: Array, y: Array) {
       y.shape.length - 1,
     ]); // [..., 1, M, K]
 
-  return x.mul(y).sum(Math.max(x.ndim, y.ndim) - 1);
-});
+  return core.dot(x, y) as Array;
+}
 
 /** Dot product of two arrays. */
-export const dot = jit(function dot(x: Array, y: Array) {
-  if (x.ndim === 0 || y.ndim === 0) {
+export function dot(x: ArrayLike, y: ArrayLike): Array {
+  if (ndim(x) === 0 || ndim(y) === 0) {
     // Standard, scalar multiplication
     return multiply(x, y);
   }
+  (x = x as Array), (y = y as Array);
   if (y.ndim === 1) {
     // Matrix-vector product
-    return x.mul(y).sum(x.ndim - 1);
+    return core.dot(x, y) as Array;
   }
   // Otherwise, this is the "sum product" between the last axis of x, and the
   // second-to-last axis of y. (y.ndim >= 2)
@@ -575,13 +576,13 @@ export const dot = jit(function dot(x: Array, y: Array) {
     y.shape.length - 2,
   ]); // [..., M, K]
 
-  return x.mul(y).sum(x.ndim - 1);
-});
+  return core.dot(x, y) as Array;
+}
 
 /** Vector dot product of two arrays. */
-export const vecdot = jit(function vecdot(x: Array, y: Array) {
-  return x.mul(y).sum(Math.max(x.ndim, y.ndim) - 1);
-});
+export function vecdot(x: ArrayLike, y: ArrayLike): Array {
+  return core.dot(x, y) as Array;
+}
 
 /**
  * Return the dot product of two vectors.

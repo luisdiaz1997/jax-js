@@ -10,7 +10,7 @@ import {
   toposort,
   unzip2,
 } from "../utils";
-import { eye, pureArray, scalar, zeros } from "./array";
+import { eye, generalBroadcast, pureArray, scalar, zeros } from "./array";
 import {
   AbstractValue,
   add,
@@ -681,6 +681,16 @@ const transposeRules: Partial<{ [P in Primitive]: TransposeRule<P> }> = {
       // The same applies to min/max as non-additive reductions.
       throw new NonlinearError(Primitive.Reduce);
     }
+  },
+  [Primitive.Dot]([ct], [x, y]) {
+    if (x instanceof UndefPrimal === y instanceof UndefPrimal)
+      throw new NonlinearError(Primitive.Dot);
+    const axisSize = generalBroadcast(x.aval.shape, y.aval.shape).slice(-1)[0];
+    ct = broadcast(ct, ct.shape.concat(axisSize), [-1]); // Undo the contraction.
+    return [
+      x instanceof UndefPrimal ? unbroadcast(mul(ct, y as Tracer), x) : null,
+      y instanceof UndefPrimal ? unbroadcast(mul(x as Tracer, ct), y) : null,
+    ];
   },
   [Primitive.Where]([ct], [cond, x, y]) {
     // Cotangent should be zero where cond doesn't apply.

@@ -388,8 +388,15 @@ export class Array extends Tracer {
     name: string,
     custom: (src: AluExp[]) => AluExp,
     arrays: Array[],
-    dtypeOverride?: (DType | undefined)[],
-    dtypeOutput?: DType,
+    {
+      dtypeOverride,
+      dtypeOutput,
+      reduceAxis,
+    }: {
+      dtypeOverride?: (DType | undefined)[];
+      dtypeOutput?: DType;
+      reduceAxis?: boolean;
+    } = {},
   ): Array {
     const n = arrays.length;
     const backend = arrays[0].#backend;
@@ -424,10 +431,13 @@ export class Array extends Tracer {
     if (!dtypeOutput) throw new TypeError("nary operation with no dtype");
 
     arrays = Array.#broadcastArrays(arrays);
-    const newShape = arrays[0].shape;
+    const newShape = [...arrays[0].shape];
 
     // Short circuit if all are already AluExp.
-    if (arrays.every((ar) => ar.#source instanceof AluExp)) {
+    if (
+      arrays.every((ar) => ar.#source instanceof AluExp) &&
+      reduceAxis === undefined
+    ) {
       if (arrays.every((ar) => deepEqual(ar.#st, arrays[0].#st))) {
         // All are AluExp and have the same shape tracker.
         const exp = custom(arrays.map((ar) => ar.#source as AluExp));
@@ -450,10 +460,17 @@ export class Array extends Tracer {
       return new Array(exp, st, exp.dtype, backend);
     }
 
+    let indices: AluExp[];
+    if (!reduceAxis) {
+      indices = unravelAlu(newShape, AluVar.gidx);
+    } else {
+      const contractedShape = newShape.slice(0, -1);
+      indices = [...unravelAlu(contractedShape, AluVar.gidx), AluVar.ridx];
+    }
+
     const inputs: Slot[] = [];
     const src: AluExp[] = [];
     for (const ar of arrays) {
-      const indices = unravelAlu(newShape, AluVar.gidx);
       if (ar.#source instanceof AluExp) {
         src.push(accessorAluExp(ar.#dtype, ar.#source, ar.#st, indices));
       } else {
@@ -467,7 +484,12 @@ export class Array extends Tracer {
     }
 
     const exp = custom(src);
-    const kernel = new Kernel(inputs.length, arrays[0].#st.size, exp);
+    let re: Reduction | undefined = undefined;
+    if (reduceAxis) {
+      const [axisSize] = newShape.splice(-1, 1); // Remove the contracted axis.
+      re = new Reduction(exp.dtype, AluOp.Add, axisSize);
+    }
+    const kernel = new Kernel(inputs.length, prod(newShape), exp, re);
     const output = backend.malloc(kernel.bytes);
     const pending = new Set([...arrays.flatMap((ar) => ar.#pending)]);
     for (const exe of pending) exe.updateRc(+1);
@@ -493,25 +515,14 @@ export class Array extends Tracer {
     const newSize = prod(newShape);
 
     const indices = [...unravelAlu(newShape, AluVar.gidx), AluVar.ridx];
-    const [index, valid] = this.#st.toAluExp(indices);
 
     let exp: AluExp;
     const inputs: Slot[] = [];
     if (this.#source instanceof AluExp) {
-      // If already AluExp, inline it into the reduction.
-      exp = AluExp.where(
-        valid,
-        this.#source.substitute({ idx: index }),
-        AluExp.const(this.#dtype, 0),
-      );
+      exp = accessorAluExp(this.#dtype, this.#source, this.#st, indices);
     } else {
-      // Otherwise, use the global index.
       inputs.push(this.#source);
-      exp = AluExp.where(
-        valid,
-        AluExp.globalIndex(this.#dtype, 0, index),
-        AluExp.const(this.#dtype, 0),
-      );
+      exp = accessorGlobal(this.#dtype, 0, this.#st, indices);
     }
 
     const kernel = new Kernel(inputs.length, newSize, exp, reduction);
@@ -761,13 +772,31 @@ export class Array extends Tracer {
         if (axis.length === 0) return [x];
         return [x.#moveAxesDown(axis).#reduce(op)];
       },
+      [Primitive.Dot]([x, y]) {
+        return [
+          Array.#naryCustom(
+            "dot",
+            ([x, y]: AluExp[]) => AluExp.mul(x, y),
+            [x, y],
+            { reduceAxis: true },
+          ),
+        ];
+      },
       [Primitive.Compare]([x, y], { op }) {
         const custom = ([x, y]: AluExp[]) => aluCompare(x, y, op);
-        return [Array.#naryCustom("compare", custom, [x, y], [], DType.Bool)];
+        return [
+          Array.#naryCustom("compare", custom, [x, y], {
+            dtypeOutput: DType.Bool,
+          }),
+        ];
       },
       [Primitive.Where]([cond, x, y]) {
         const custom = ([cond, x, y]: AluExp[]) => AluExp.where(cond, x, y);
-        return [Array.#naryCustom("where", custom, [cond, x, y], [DType.Bool])];
+        return [
+          Array.#naryCustom("where", custom, [cond, x, y], {
+            dtypeOverride: [DType.Bool],
+          }),
+        ];
       },
       [Primitive.Transpose]([x], { perm }) {
         return [x.#transpose(perm)];
@@ -867,7 +896,7 @@ export function array(
     | RecursiveArray<boolean>,
   { shape, dtype, device }: { shape?: number[] } & DTypeAndDevice = {},
 ): Array {
-  if (values instanceof Array) {
+  if (values instanceof Tracer) {
     if (shape && !deepEqual(values.shape, shape)) {
       values = values.reshape(shape);
     }
@@ -1055,7 +1084,7 @@ export function full(
   } else if (typeof fillValue === "boolean") {
     dtype = dtype ?? DType.Bool;
     source = AluExp.const(dtype, fillValue ? 1 : 0);
-  } else if (fillValue instanceof Array) {
+  } else if (fillValue instanceof Tracer) {
     // TODO: Full can also take an array as a fill value. This is equivalent to
     // expanding the array.
     throw new Error("numpy.full() with array argument not implemented yet");

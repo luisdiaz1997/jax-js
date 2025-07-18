@@ -37,6 +37,7 @@ export enum Primitive {
   Min = "min",
   Max = "max",
   Reduce = "reduce",
+  Dot = "dot",
   Compare = "compare",
   Where = "where",
   Transpose = "transpose",
@@ -169,6 +170,10 @@ export function reduce(
   const originalShape = getShape(x);
   const result = bind1(Primitive.Reduce, [x], { op, axis });
   return opts?.keepDims ? broadcast(result, originalShape, axis) : result;
+}
+
+export function dot(x: TracerValue, y: TracerValue) {
+  return bind1(Primitive.Dot, [x, y]); // reduce(x*y, -1)
 }
 
 export function compare(x: TracerValue, y: TracerValue, op: CompareOp) {

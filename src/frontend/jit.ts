@@ -510,6 +510,16 @@ const jitRules: { [P in Primitive]: JitRule<P> } = {
     const reduction = new Reduction(a.dtype, op, reductionSize);
     return new Kernel(nargs, size, a, reduction);
   },
+  [Primitive.Dot](nargs, [a, b], [as, bs]) {
+    // Dot is just Mul->Reduce in sequence.
+    const k1 = jitRules[Primitive.Mul](nargs, [a, b], [as, bs], {});
+    const c = k1.exp;
+    const cs = new ShapedArray(generalBroadcast(as.shape, bs.shape), c.dtype);
+    return jitRules[Primitive.Reduce](nargs, [c], [cs], {
+      op: AluOp.Add,
+      axis: [cs.ndim - 1],
+    });
+  },
   [Primitive.Compare]: broadcastedJit(([a, b], { op }) => aluCompare(a, b, op)),
   [Primitive.Where]: broadcastedJit(([cond, a, b]) => AluExp.where(cond, a, b)),
   [Primitive.Transpose]: reshapeJit((st, { perm }) => st.permute(perm)),

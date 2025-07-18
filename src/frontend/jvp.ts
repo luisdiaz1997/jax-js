@@ -13,6 +13,7 @@ import {
   broadcast,
   cast,
   cos,
+  dot,
   exp,
   flattenFun,
   fullRaise,
@@ -193,6 +194,10 @@ const jvpRules: { [P in Primitive]: JvpRule<P> } = {
     } else {
       throw new Error(`JVP rule not implemented for reduce op: ${op}`);
     }
+  },
+  [Primitive.Dot]([x, y], [dx, dy]) {
+    // d(dot(x, y)) = dot(dx, y) + dot(x, dy)
+    return [[dot(x.ref, y.ref)], [dot(dx, y).add(dot(x, dy))]];
   },
   [Primitive.Compare]: zeroTangentsJvp(Primitive.Compare),
   [Primitive.Where]([cond, x, y], [dcond, dx, dy]) {

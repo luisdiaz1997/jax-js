@@ -65,7 +65,6 @@ npm test
 - Fix jit-of-grad returning very incorrect result
 - Probably add static_argnums to jit() so that clip and some nn functions have jit added
 - Improve perf of MNIST neural network
-  - `dot()` grad should not materialize n^3 data, add a dedicated primitive
   - Adding fused reductions to JIT
   - Reduce kernel overhead of constants / inline expressions
 - Investigate why jax-js Matmul is 2x slower on Safari TP than unroll kernel

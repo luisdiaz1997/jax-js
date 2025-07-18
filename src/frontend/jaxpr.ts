@@ -740,6 +740,15 @@ export const abstractEvalRules: { [P in Primitive]: AbstractEvalRule<P> } = {
     const newShape = x.shape.filter((_, i) => !axisSet.has(i));
     return [new ShapedArray(newShape, x.dtype)];
   },
+  [Primitive.Dot]([x, y]) {
+    if (x.dtype !== y.dtype)
+      throw new TypeError(`Dot dtype mismatch, got ${x.dtype} vs ${y.dtype}`);
+    if (x.ndim === 0 && y.ndim === 0)
+      throw new TypeError("Dot requires at least 1D inputs");
+    const shape = generalBroadcast(x.shape, y.shape);
+    shape.splice(-1, 1); // Remove the contracted dimension.
+    return [new ShapedArray(shape, x.dtype)];
+  },
   [Primitive.Compare]: compareAbstractEval,
   [Primitive.Where]([cond, x, y]) {
     if (cond.dtype !== DType.Bool)

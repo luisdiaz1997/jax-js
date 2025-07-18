@@ -9,6 +9,7 @@ import {
   cast,
   compare,
   cos,
+  dot,
   exp,
   flattenFun,
   flip,
@@ -238,6 +239,16 @@ const vmapRules: Partial<{ [P in Primitive]: VmapRule<P> }> = {
     const newAxis = axis.map((ax) => ax + (xBdim <= ax ? 1 : 0));
     const outBdim = xBdim - axis.filter((ax) => ax < xBdim).length;
     return [[reduce(x, op, newAxis)], [outBdim]];
+  },
+  [Primitive.Dot](axisSize, [x, y], [xBdim, yBdim]) {
+    if (xBdim === null && yBdim === null) {
+      return [[dot(x, y)], [null]];
+    }
+    // Move both the batch axes to the second-to-last position.
+    x = moveBatchAxis(axisSize, xBdim, x.ndim - (xBdim === null ? 1 : 2), x);
+    y = moveBatchAxis(axisSize, yBdim, y.ndim - (yBdim === null ? 1 : 2), y);
+    const z = dot(x, y);
+    return [[z], [z.ndim - 1]]; // The batch axis is now at the end.
   },
   [Primitive.Compare](axisSize, args, dims, { op }) {
     return broadcastBatcher((x, y) => compare(x, y, op))(
