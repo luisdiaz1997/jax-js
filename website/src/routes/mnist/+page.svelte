@@ -376,7 +376,7 @@
               >
             {:else}
               <p
-                class="absolute top-18 left-6 -rotate-15 animate-bounce italic text-gray-400 select-none"
+                class="absolute top-18 left-6 -rotate-15 animate-bounce italic text-gray-400 pointer-events-none"
               >
                 draw a digit here!
               </p>
