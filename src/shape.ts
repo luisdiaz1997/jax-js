@@ -77,7 +77,7 @@ function mergeDims(
     const [s, st] = [shape[i], strides[i]];
     if (s === 1) continue; // Always merge 1
     const [lastS, lastSt, lastPreExpandS] = ret[ret.length - 1];
-    if (merging || lastSt === 0 || lastSt === s * st) {
+    if (merging || lastSt === s * st) {
       // Merge last dim with this dim if merging or strides matched.
       // If merging due to mask of size 1, reset real size.
       ret[ret.length - 1] = [lastS * s, st, merging ? s : lastPreExpandS * s];

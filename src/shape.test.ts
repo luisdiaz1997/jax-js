@@ -292,6 +292,20 @@ suite("View.compose()", () => {
     const composed = v2.compose(v1);
     expect(composed).toBeNull();
   });
+
+  // Regression test for a specific bug in kernel tuning that affected neural
+  // network inference with batch size 1, when unroll was enabled.
+  test("composes unroll in 1-784-10 matmul", () => {
+    const a = View.create([1, 10, 784], [0, 0, 1]);
+    const b = View.create([1, 10, 196, 4]);
+    expect(b.strides).toEqual([0, 784, 4, 1]);
+    // a.compose(b) is equivalent to a.reshape(b.shape), since b is contiguous.
+    for (const c of [a.compose(b), a.reshape(b.shape)]) {
+      if (c === null) throw new Error("Expected composition to succeed");
+      expect(c.shape).toEqual([1, 10, 196, 4]);
+      expect(c.strides).toEqual([0, 0, 4, 1]);
+    }
+  });
 });
 
 suite("ShapeTracker", () => {
