@@ -23,6 +23,8 @@ jobs:
 
       - run: pnpm build
 
+      - run: pnpm check
+
       - run: pnpm lint
 
       - run: pnpm exec playwright install chromium-headless-shell

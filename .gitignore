@@ -2,6 +2,7 @@ node_modules/
 build/
 dist/
 docs/
+docs-json/
 .svelte-kit/
 
 .vscode/
