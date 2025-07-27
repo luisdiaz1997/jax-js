@@ -478,6 +478,7 @@ const jitRules: { [P in Primitive]: JitRule<P> } = {
   [Primitive.Cos]: unopJit(AluExp.cos),
   [Primitive.Exp]: unopJit(AluExp.exp),
   [Primitive.Log]: unopJit(AluExp.log),
+  [Primitive.Sqrt]: unopJit(AluExp.sqrt),
   [Primitive.Min]: broadcastedJit(([a, b]) => AluExp.min(a, b)),
   [Primitive.Max]: broadcastedJit(([a, b]) => AluExp.max(a, b)),
   [Primitive.Reduce](nargs, [a], [as], { op, axis }) {

@@ -30,6 +30,7 @@ import {
   reciprocal,
   reduce,
   sin,
+  sqrt,
   Trace,
   Tracer,
   TracerValue,
@@ -160,6 +161,11 @@ const jvpRules: { [P in Primitive]: JvpRule<P> } = {
   [Primitive.Log]([x], [dx]) {
     // d(log(x)) = 1/x * dx
     return [[log(x.ref)], [reciprocal(x).mul(dx)]];
+  },
+  [Primitive.Sqrt]([x], [dx]) {
+    // d(sqrt(x)) = 1/(2*sqrt(x)) * dx
+    const z = sqrt(x);
+    return [[z.ref], [reciprocal(z.mul(2)).mul(dx)]];
   },
   [Primitive.Min]([x, y], [dx, dy]) {
     return [[min(x.ref, y.ref)], [where(less(y, x), dy, dx)]];

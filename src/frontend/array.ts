@@ -775,6 +775,9 @@ export class Array extends Tracer {
       [Primitive.Log]([x]) {
         return [x.#unary(AluOp.Log)];
       },
+      [Primitive.Sqrt]([x]) {
+        return [x.#unary(AluOp.Sqrt)];
+      },
       [Primitive.Min]([x, y]) {
         return [x.#binary(AluOp.Min, y)];
       },

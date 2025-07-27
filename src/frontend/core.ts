@@ -34,6 +34,7 @@ export enum Primitive {
   Cos = "cos",
   Exp = "exp",
   Log = "log",
+  Sqrt = "sqrt",
   Min = "min",
   Max = "max",
   Reduce = "reduce",
@@ -137,6 +138,10 @@ export function exp(x: TracerValue) {
 
 export function log(x: TracerValue) {
   return bind1(Primitive.Log, [x]);
+}
+
+export function sqrt(x: TracerValue) {
+  return bind1(Primitive.Sqrt, [x]);
 }
 
 export function min(x: TracerValue, y: TracerValue) {

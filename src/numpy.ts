@@ -77,6 +77,8 @@ export const cos = core.cos as (x: ArrayLike) => Array;
 export const exp = core.exp as (x: ArrayLike) => Array;
 /** Calculate the natural logarithm of all elements in the input array. */
 export const log = core.log as (x: ArrayLike) => Array;
+/** Calculate the square root of all elements in the input array. */
+export const sqrt = core.sqrt as (x: ArrayLike) => Array;
 /** Return element-wise minimum of the input arrays. */
 export const minimum = core.min as (x: ArrayLike, y: ArrayLike) => Array;
 /** Return element-wise maximum of the input arrays. */

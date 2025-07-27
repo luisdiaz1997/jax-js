@@ -618,6 +618,20 @@ suite.each(devices)("device:%s", (device) => {
     });
   });
 
+  suite("jax.numpy.sqrt()", () => {
+    test("computes element-wise square root", () => {
+      const x = np.array([1, 4, 9]);
+      const y = np.sqrt(x);
+      expect(y.js()).toBeAllclose([1, 2, 3]);
+    });
+
+    test("returns NaN for negative inputs", () => {
+      const x = np.array([-1, -4, 9]);
+      const y = np.sqrt(x);
+      expect(y.js()).toEqual([NaN, NaN, 3.0]);
+    });
+  });
+
   suite("jax.numpy.min()", () => {
     test("computes minimum of 1D array", () => {
       const x = np.array([3, 1, 4, 2]);

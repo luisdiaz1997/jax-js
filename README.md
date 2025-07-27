@@ -65,6 +65,7 @@ pnpm test
 
 ## Next on Eric's mind
 
+- Sqrt and zerosLike, onesLike, fullLike, so I can implement adam
 - Fix jit-of-grad returning very incorrect result
 - Probably add static_argnums to jit() so that clip and some nn functions have jit added
 - Improve perf of MNIST neural network

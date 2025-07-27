@@ -102,6 +102,12 @@ test("AluOp.Log", () => {
   expect(e3.evaluate({})).toBeNaN();
 });
 
+test("AluOp.Sqrt", () => {
+  const e = AluExp.sqrt(AluExp.f32(16));
+  expect(e.evaluate({})).toBe(4);
+  expect(e.dtype).toBe(DType.Float32);
+});
+
 test("AluOp.Cast", () => {
   const e = AluExp.cast(DType.Float32, AluExp.i32(42));
   expect(e.evaluate({})).toBe(42);

@@ -112,6 +112,9 @@ export class AluExp implements FpHashable {
   static log(a: AluExp): AluExp {
     return new AluExp(AluOp.Log, a.dtype, [a]);
   }
+  static sqrt(a: AluExp): AluExp {
+    return new AluExp(AluOp.Sqrt, a.dtype, [a]);
+  }
   static reciprocal(a: AluExp): AluExp {
     return new AluExp(AluOp.Reciprocal, a.dtype, [a]);
   }
@@ -318,6 +321,9 @@ export class AluExp implements FpHashable {
         break;
       case AluOp.Log:
         ret = [Math.log(src[0].min), Math.log(src[0].max)];
+        break;
+      case AluOp.Sqrt:
+        ret = [Math.sqrt(src[0].min), Math.sqrt(src[0].max)];
         break;
       case AluOp.Reciprocal:
         if (src[0].min <= 0 && src[0].max >= 0) return [-Infinity, Infinity];
@@ -632,6 +638,8 @@ export class AluExp implements FpHashable {
           return Math.exp(x);
         case AluOp.Log:
           return Math.log(x);
+        case AluOp.Sqrt:
+          return Math.sqrt(x);
         case AluOp.Reciprocal:
           return 1 / x;
         case AluOp.Cast:
@@ -729,6 +737,7 @@ export class AluExp implements FpHashable {
       [AluOp.Cos]: "cos",
       [AluOp.Exp]: "exp",
       [AluOp.Log]: "log",
+      [AluOp.Sqrt]: "sqrt",
       [AluOp.Reciprocal]: "1/",
     };
 
@@ -835,6 +844,7 @@ export enum AluOp {
   Cos = "Cos",
   Exp = "Exp",
   Log = "Log",
+  Sqrt = "Sqrt",
   Reciprocal = "Reciprocal",
   Cast = "Cast",
   Bitcast = "Bitcast",
@@ -870,6 +880,7 @@ export const AluGroup = {
     AluOp.Cos,
     AluOp.Exp,
     AluOp.Log,
+    AluOp.Sqrt,
     AluOp.Reciprocal,
     AluOp.Cast,
     AluOp.Bitcast,
@@ -887,6 +898,7 @@ export const AluGroup = {
     AluOp.Cos,
     AluOp.Exp,
     AluOp.Log,
+    AluOp.Sqrt,
     AluOp.Reciprocal,
   ]),
 };

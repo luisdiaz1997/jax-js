@@ -31,6 +31,7 @@ import {
   ShapedArray,
   shrink,
   sin,
+  sqrt,
   stopGradient,
   Trace,
   Tracer,
@@ -230,6 +231,7 @@ const vmapRules: Partial<{ [P in Primitive]: VmapRule<P> }> = {
   [Primitive.Cos]: unopBatcher(cos),
   [Primitive.Exp]: unopBatcher(exp),
   [Primitive.Log]: unopBatcher(log),
+  [Primitive.Sqrt]: unopBatcher(sqrt),
   [Primitive.Min]: broadcastBatcher(min),
   [Primitive.Max]: broadcastBatcher(max),
   [Primitive.Reduce](axisSize, [x], [xBdim], { op, axis }) {
