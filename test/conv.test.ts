@@ -24,10 +24,27 @@ suite.each(devices)("device:%s", (device) => {
 
   test("padding 'SAME' and 'SAME_LOWER'", () => {
     const x = np.ones([1, 1, 5]);
-    const y = np.ones([1, 1, 2]);
+    const y = np.ones([1, 1, 4]);
     const resultSame = lax.convGeneralDilated(x.ref, y.ref, [1], "SAME");
-    expect(resultSame.slice(0, 0).js()).toEqual([2, 2, 2, 2, 1]);
+    expect(resultSame.slice(0, 0).js()).toEqual([3, 4, 4, 3, 2]);
     const resultSameLower = lax.convGeneralDilated(x, y, [1], "SAME_LOWER");
-    expect(resultSameLower.slice(0, 0).js()).toEqual([1, 2, 2, 2, 2]);
+    expect(resultSameLower.slice(0, 0).js()).toEqual([2, 3, 4, 4, 3]);
+  });
+
+  test("2d convolution", () => {
+    const x = np
+      .array([
+        [3, 1, 5],
+        [2, 2, 9],
+      ])
+      .reshape([1, 1, 2, 3]);
+    const y = np
+      .array([
+        [1, 2],
+        [3, 4],
+      ])
+      .reshape([1, 1, 2, 2]);
+    const result = lax.convGeneralDilated(x, y, [1, 1], "VALID");
+    expect(result.slice(0, 0).js()).toEqual([[19, 53]]);
   });
 });

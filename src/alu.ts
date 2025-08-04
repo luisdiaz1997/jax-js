@@ -509,11 +509,11 @@ export class AluExp implements FpHashable {
     }
     if (op === AluOp.Idiv && src[1].#isConstInt()) {
       const [numer, denom] = src;
-      const B = denom.arg;
+      const B: number = denom.arg;
       for (let i = 0; i < 2; i++) {
         // (x * A) / B => x * (A / B)
         if (numer.op === AluOp.Mul && numer.src[i].#isConstInt()) {
-          const A = numer.src[i].arg;
+          const A: number = numer.src[i].arg;
           if (A % B === 0) {
             let ret = numer.src[1 - i]; // x
             if (A / B !== 1) ret = AluExp.mul(ret, AluExp.i32(A / B));
@@ -527,11 +527,14 @@ export class AluExp implements FpHashable {
             numer.src[j].op === AluOp.Mul &&
             numer.src[j].src[i].#isConstInt()
           ) {
-            const A = numer.src[j].src[i].arg;
+            const A: number = numer.src[j].src[i].arg;
             if (A % B === 0) {
               let ret = numer.src[j].src[1 - i]; // x
               if (A / B !== 1) ret = AluExp.mul(ret, AluExp.i32(A / B));
-              ret = AluExp.add(ret, AluExp.idiv(numer.src[1 - j], B));
+              ret = AluExp.add(
+                ret,
+                AluExp.idiv(numer.src[1 - j], AluExp.i32(B)),
+              );
               return ret.simplify(cache);
             }
           }
@@ -545,14 +548,42 @@ export class AluExp implements FpHashable {
       src[0].min >= 0
     ) {
       const [numer, denom] = src;
-      const B = denom.arg;
+      const B: number = denom.arg;
       for (let i = 0; i < 2; i++) {
-        // (x + A) % B => x % B + (A % B); when x+A>=0, B>0
-        if (numer.op === AluOp.Add && numer.src[i].#isConstInt()) {
-          const A = numer.src[i].arg;
-          let ret = numer.src[1 - i]; // x
-          if (A % B !== 0) ret = AluExp.add(ret, AluExp.i32(A % B));
-          return ret.simplify(cache);
+        if (numer.op === AluOp.Add) {
+          // (x + A) % B => x % B; when x>=0, A%B === 0
+          if (numer.src[i].#isConstInt()) {
+            const A: number = numer.src[i].arg;
+            const x = numer.src[1 - i]; // x
+            if (A % B === 0 && x.min >= 0) {
+              return AluExp.mod(x, denom).simplify(cache);
+            }
+          }
+          for (let j = 0; j < 2; j++) {
+            // (x + A * y) * B => x % B, when x>=0, A%B === 0
+            if (
+              numer.src[i].op === AluOp.Mul &&
+              numer.src[i].src[j].#isConstInt()
+            ) {
+              const A: number = numer.src[i].src[j].arg;
+              const x = numer.src[1 - i]; // x
+              if (A % B === 0 && x.min >= 0) {
+                return AluExp.mod(x, denom).simplify(cache);
+              }
+            }
+          }
+        } else if (numer.op === AluOp.Mul) {
+          if (numer.src[i].#isConstInt()) {
+            const A: number = numer.src[i].arg;
+            // (x * A) % B => 0, when A%B === 0
+            if (A % B === 0) {
+              return AluExp.const(this.dtype, 0);
+            }
+            // (x * A) % B => x % B, when A%B === 1
+            if (A % B === 1) {
+              return AluExp.mod(numer.src[1 - i], denom).simplify(cache);
+            }
+          }
         }
       }
     }
