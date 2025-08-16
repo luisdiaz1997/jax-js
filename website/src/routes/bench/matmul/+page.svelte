@@ -755,7 +755,7 @@ fn main(@builtin(global_invocation_id) global_id : vec3<u32>) {
     Running a few different WebGPU matmul programs on {n}x{n} matrices.
   </p>
 
-  <div class="flex flex-wrap gap-x-4 gap-y-2 mb-4">
+  <div class="flex flex-wrap gap-2 mb-4">
     {#each strategiesList as strategy (strategy.name)}
       <button
         class="border px-2 hover:bg-gray-100 active:scale-95"
@@ -785,6 +785,6 @@ fn main(@builtin(global_invocation_id) global_id : vec3<u32>) {
   @reference "$app.css";
 
   button {
-    @apply border px-2 hover:bg-gray-100 active:scale-95;
+    @apply border rounded px-2 hover:bg-gray-100 active:scale-95;
   }
 </style>

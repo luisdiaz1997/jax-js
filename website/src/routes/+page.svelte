@@ -73,7 +73,7 @@
   <p class="mb-6">
     <span class="italic"
       >XXX Performance benchmarks coming soon—though see
-      <a href="{base}/matmul" class="link">here</a> for some initial results.</span
+      <a href="{base}/bench/matmul" class="link">here</a> for some initial results.</span
     >
   </p>
 
