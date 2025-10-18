@@ -29,42 +29,45 @@
       {/if}
     </div>
     <div class="flex-1">
-      {#if status === "downloading"}
-        <div class="text-gray-700 font-medium text-sm mb-1">
-          Downloading model weights…
-        </div>
-        {#if loaded !== undefined && total !== undefined}
-          {@const percentage = Math.round((loaded / total) * 100)}
-          <div class="flex items-center gap-2 mb-1.5">
-            <div
-              class="flex-1 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-1.5 overflow-hidden"
-            >
-              <div
-                class="bg-gradient-to-r from-blue-500 to-blue-600 h-1.5 transition-all duration-300 ease-out rounded-full"
-                style:width="{percentage}%"
-              ></div>
-            </div>
-            <span class="tabular-nums text-xs text-gray-600 whitespace-nowrap">
-              {percentage}%
-            </span>
-          </div>
-          <div class="text-xs text-gray-500 tabular-nums">
-            {formatBytes(loaded)} / {formatBytes(total)}
-          </div>
+      <div class="font-medium text-sm mb-1">
+        {#if status === "downloading"}
+          <p class="text-gray-700">Downloading model weights…</p>
+        {:else if status === "success"}
+          <p class="text-green-700">Model weights loaded!</p>
+        {:else if status === "error"}
+          <p class="text-red-700">Failed to download</p>
         {/if}
-      {:else if status === "success"}
-        <div class="text-green-700 font-medium text-sm mb-1">
-          Model weights loaded!
+      </div>
+
+      {#if errorMessage}
+        <div class="text-xs text-red-500">{errorMessage}</div>
+      {/if}
+
+      {#if status === "downloading" && loaded !== undefined && total !== undefined}
+        {@const percentage = Math.min(Math.floor((loaded / total) * 100), 99)}
+        <div class="flex items-center gap-2 mb-1.5">
+          <div
+            class="flex-1 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-1.5 overflow-hidden"
+          >
+            <div
+              class="bg-gradient-to-r from-blue-500 to-blue-600 h-1.5 transition-all duration-200 ease-out rounded-full"
+              style:width="{percentage}%"
+            ></div>
+          </div>
+          <span class="tabular-nums text-xs text-gray-600 whitespace-nowrap">
+            {percentage}%
+          </span>
         </div>
-        <div class="text-xs text-gray-600 tabular-nums">
-          {formatBytes(loaded!)}
-        </div>
-      {:else}
-        <div class="text-red-700 font-medium text-sm mb-1">
-          Failed to load model weights
-        </div>
-        <div class="text-xs text-gray-600">
-          {errorMessage}
+      {/if}
+
+      {#if status === "downloading" || status === "success"}
+        <div class="text-xs text-gray-500 tabular-nums">
+          {#if loaded !== undefined}
+            {formatBytes(loaded)}
+            {#if total !== undefined}
+              / {formatBytes(total)}
+            {/if}
+          {/if}
         </div>
       {/if}
     </div>
