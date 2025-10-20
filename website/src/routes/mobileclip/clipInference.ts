@@ -1,6 +1,6 @@
 import { nn, numpy as np } from "@jax-js/jax";
 
-// Interfaces for model weights.
+// MobileCLIP2 model weights interfaces and forward pass.
 
 export interface MobileCLIPTextEncoder {
   tokenEmbedding: np.Array;
@@ -8,6 +8,34 @@ export interface MobileCLIPTextEncoder {
   transformer: MobileCLIPTextBlock[];
   lnFinal: LayerNorm;
   textProjection: np.Array;
+}
+
+export function runMobileCLIPTextEncoder(
+  {
+    tokenEmbedding,
+    positionalEmbedding,
+    transformer,
+    lnFinal,
+    textProjection,
+  }: MobileCLIPTextEncoder,
+  textTokens: np.Array,
+): np.Array {
+  const batchSize = textTokens.shape[0];
+
+  // Embed tokens and add positional embeddings
+  let x = tokenEmbedding.slice(textTokens.ref); // [B, L, D]
+  x = x.add(positionalEmbedding);
+
+  for (const block of transformer) {
+    x = runMobileCLIPTextBlock(block, x);
+  }
+  x = runLayerNorm(lnFinal, x.ref);
+
+  const finalFeatures = x.slice(
+    np.arange(batchSize),
+    np.argmax(textTokens, -1),
+  );
+  return np.matmul(finalFeatures, textProjection); // [B, D_out]
 }
 
 export interface MobileCLIPTextBlock {
@@ -21,11 +49,10 @@ export interface MobileCLIPTextBlock {
 export function runMobileCLIPTextBlock(
   { ln1, attn, ln2, mlpUp, mlpDown }: MobileCLIPTextBlock,
   x: np.Array,
-  numHeads: number,
 ): np.Array {
   // Pre-norm attention block
   const normed1 = runLayerNorm(ln1, x.ref);
-  const attnOut = runMultiHeadAttention(attn, normed1, numHeads);
+  const attnOut = runMultiHeadAttention(attn, normed1);
   x = x.add(attnOut); // Residual connection
 
   // Pre-norm MLP block
@@ -46,8 +73,9 @@ export interface MultiHeadAttention {
 export function runMultiHeadAttention(
   { qkvProj, outProj }: MultiHeadAttention,
   x: np.Array,
-  numHeads: number,
 ): np.Array {
+  const numHeads = 8;
+
   // x shape: [seqLen, embed]
   const [seqLen, embed] = x.shape;
   const headDim = embed / numHeads;
