@@ -26,6 +26,7 @@ const lossFn = jit((w: np.Array) => {
   return loss;
 });
 
+// Try adding jit() to lossGrad to see the code get faster.
 const lossGrad = grad(lossFn);
 
 // Training loop.
@@ -40,8 +41,7 @@ for (let step = 0; step < steps; step++) {
   const grads = lossGrad(w.ref);
   [updates, optState] = solver.update(grads, optState);
   w = applyUpdates(w, updates);
-  if (step % 10 === 9) {
-    await w.wait();
+  if (step % 20 === 19) {
     const loss = await lossFn(w.ref).jsAsync();
     console.log(`Step ${step + 1}: loss = ${loss}`);
   }

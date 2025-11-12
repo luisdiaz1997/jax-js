@@ -18,7 +18,7 @@
 
   import ReplEditor from "$lib/repl/ReplEditor.svelte";
 
-  const samplesSrc: Record<string, string> = import.meta.glob("./*.ts", {
+  const src: Record<string, string> = import.meta.glob("./*.ts", {
     eager: true,
     query: "?raw",
     import: "default",
@@ -28,10 +28,10 @@
     title: string;
     code: string;
   }[] = [
-    { title: "Arrays", code: samplesSrc["./01-arrays.ts"] },
-    { title: "Tracing Jaxprs", code: samplesSrc["./02-tracing.ts"] },
-    { title: "Logistic regression", code: samplesSrc["./03-logistic.ts"] },
-    { title: "Mandelbrot set", code: samplesSrc["./04-mandelbrot.ts"] },
+    { title: "Arrays", code: src["./01-arrays.ts"] },
+    { title: "Tracing Jaxprs", code: src["./02-tracing.ts"] },
+    { title: "Logistic regression", code: src["./03-logistic-regression.ts"] },
+    { title: "Mandelbrot set", code: src["./04-mandelbrot.ts"] },
   ];
 
   let pageSelected = $derived.by(() => {
