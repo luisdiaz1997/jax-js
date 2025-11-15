@@ -126,7 +126,7 @@ suite.each(devices)("device:%s", (device) => {
         if (xDim < kDim) continue;
         const x = np.zeros([3, 1, xDim, xDim]);
         const y = np.zeros([1, 1, kDim, kDim]);
-        const dx = grad(f)(x, y);
+        const dx = grad(f)(x.ref, y.ref);
         expect(dx.shape).toEqual(x.shape);
 
         const dy = grad(g)(y, x);

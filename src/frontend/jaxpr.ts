@@ -34,6 +34,15 @@ import {
   TracerValue,
 } from "./core";
 
+/**
+ * Function callback with an associated dispose() method.
+ *
+ * The dispose() method should be called to clean up any tracer resources needed
+ * by the function after the last time it is called.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+export type OwnedFunction<F extends Function> = F & { dispose: () => void };
+
 /** Variable in a Jaxpr expression. */
 export class Var {
   static #nextId = 1; // For debugging, since JavaScript has no id() function like Python.
@@ -919,11 +928,13 @@ export function makeJaxpr(
 export function jit<F extends (...args: any[]) => any>(
   f: F,
   opts?: JitOpts,
-): (...args: MapJsTree<Parameters<F>, Array, ArrayLike>) => ReturnType<F> {
+): OwnedFunction<
+  (...args: MapJsTree<Parameters<F>, Array, ArrayLike>) => ReturnType<F>
+> {
   const cache = new Map<string, ReturnType<ReturnType<typeof makeJaxpr>>>();
   const staticArgnums = new Set(opts?.staticArgnums ?? []);
 
-  return ((...args) => {
+  const result = ((...args) => {
     const [staticArgs, dynamicArgs] = splitIdx(args, staticArgnums);
 
     const [argsFlat, inTree] = treeFlatten(dynamicArgs);
@@ -947,5 +958,15 @@ export function jit<F extends (...args: any[]) => any>(
       },
     );
     return treeUnflatten(outTree, outs);
-  }) as F;
+  }) as OwnedFunction<F>;
+
+  result.dispose = () => {
+    for (const { consts } of cache.values()) {
+      for (const c of consts) {
+        c.dispose();
+      }
+    }
+  };
+
+  return result;
 }

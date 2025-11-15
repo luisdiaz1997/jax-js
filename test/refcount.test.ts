@@ -15,9 +15,7 @@ suite("refcount through grad", () => {
     expect(() => df(x).js()).toThrowError(ReferenceError);
   });
 
-  // TODO(2025-11-13): Why is this test failing?
-  // Also, check out grad-grad-jit test and update README
-  test.skip("multiply and sum", () => {
+  test("multiply and sum", () => {
     const f = (x: np.Array) => x.ref.mul(x).sum();
     const df = grad(f);
 

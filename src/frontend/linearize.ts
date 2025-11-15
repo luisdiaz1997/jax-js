@@ -1,8 +1,13 @@
 /** @file Implementations of vjp() and partial evaluation. */
 
 import { AluOp, isFloatDtype } from "../alu";
-import { flatten as treeFlatten, unflatten as treeUnflatten } from "../tree";
 import {
+  dispose as treeDispose,
+  flatten as treeFlatten,
+  unflatten as treeUnflatten,
+} from "../tree";
+import {
+  DEBUG,
   deepEqual,
   invertPermutation,
   partitionList,
@@ -47,6 +52,7 @@ import {
   JaxprEqn,
   Lit,
   makeJaxpr,
+  OwnedFunction,
   typecheckJaxpr,
   Var,
 } from "./jaxpr";
@@ -135,20 +141,23 @@ function linearizeFlatUtil(
 function linearizeFlat(
   f: (...args: any[]) => any,
   primalsIn: Tracer[],
-): [Tracer[], (...args: any[]) => any] {
+): [Tracer[], (...args: Tracer[]) => Tracer[], () => void] {
   const { primalsOut, jaxpr, consts } = linearizeFlatUtil(f, primalsIn);
   const fLin = (...tangents: Tracer[]) =>
     evalJaxpr(jaxpr, [...consts.map((c) => c.ref), ...tangents]);
-  return [primalsOut, fLin];
+  const dispose = () => {
+    for (const c of consts) c.dispose();
+  };
+  return [primalsOut, fLin, dispose];
 }
 
 export function linearize(
   f: (...primals: any[]) => any,
   ...primalsIn: any[]
-): [any, (...tangents: any[]) => any] {
+): [any, OwnedFunction<(...tangents: any[]) => any>] {
   const [primalsInFlat, inTree] = treeFlatten(primalsIn);
   const [fFlat, outTree] = flattenFun(f, inTree);
-  const [primalsOutFlat, fLinFlat] = linearizeFlat(
+  const [primalsOutFlat, fLinFlat, dispose] = linearizeFlat(
     fFlat,
     primalsInFlat.map(pureArray),
   );
@@ -156,14 +165,15 @@ export function linearize(
     throw new Error("outTree was not set in linearize");
   }
   const primalsOut = treeUnflatten(outTree.value, primalsOutFlat);
-  const fLin = (...tangentsIn: any[]) => {
+  const fLin = ((...tangentsIn: any[]) => {
     const [tangentsInFlat, inTree2] = treeFlatten(tangentsIn);
     if (!inTree.equals(inTree2)) {
       throw new TreeMismatchError("linearize", inTree, inTree2);
     }
     const tangentsOutFlat = fLinFlat(...tangentsInFlat.map(pureArray));
     return treeUnflatten(outTree.value!, tangentsOutFlat);
-  };
+  }) as OwnedFunction<(...tangents: any[]) => any>;
+  fLin.dispose = dispose;
   return [primalsOut, fLin];
 }
 
@@ -483,7 +493,7 @@ function partialEvalGraphToJaxpr(
     ...tracersIn.map((t) => tracerToVar.get(t)!),
   ];
   const outVars = tracersOut.map((t) => tracerToVar.get(t)!);
-  const jaxpr = new Jaxpr(inBinders, eqns, outVars);
+  let jaxpr = new Jaxpr(inBinders, eqns, outVars);
   typecheckJaxpr(jaxpr); // sanity check
 
   // Fix up reference counts.
@@ -491,7 +501,12 @@ function partialEvalGraphToJaxpr(
   for (const t of tracersIn) t.dispose();
   for (const t of tracersOut) t.dispose();
 
-  return { jaxpr: jaxpr.simplify(), consts };
+  jaxpr = jaxpr.simplify();
+  if (DEBUG >= 5) {
+    console.log("jaxpr from partial evaluation:\n" + jaxpr.toString());
+  }
+
+  return { jaxpr, consts };
 }
 
 // implementation of vjp and grad
@@ -890,7 +905,7 @@ function transposeJaxpr(
 function vjpFlat(
   f: (...x: Tracer[]) => Tracer[],
   primalsIn: Tracer[],
-): [Tracer[], (...cotangents: Tracer[]) => Tracer[]] {
+): [Tracer[], (...cotangents: Tracer[]) => Tracer[], () => void] {
   const { primalsOut, jaxpr, consts } = linearizeFlatUtil(f, primalsIn);
   // Pullback cotangents to the UndefPrimal transpose inputs.
   const fVjp = (...cotangents: Tracer[]) => {
@@ -902,16 +917,19 @@ function vjpFlat(
     ];
     return evalJaxprTransposed(jaxpr, transposeInputs, cotangents);
   };
-  return [primalsOut, fVjp];
+  const dispose = () => {
+    for (const c of consts) c.dispose();
+  };
+  return [primalsOut, fVjp, dispose];
 }
 
 export function vjp(
   f: (...primals: any) => any,
   ...primalsIn: any
-): [any, (...cotangents: any) => any] {
+): [any, OwnedFunction<(...cotangents: any) => any>] {
   const [primalsInFlat, inTree] = treeFlatten(primalsIn);
   const [fFlat, outTree] = flattenFun(f, inTree);
-  const [primalsOutFlat, fVjpFlat] = vjpFlat(
+  const [primalsOutFlat, fVjpFlat, dispose] = vjpFlat(
     fFlat,
     primalsInFlat.map(pureArray),
   );
@@ -921,14 +939,15 @@ export function vjp(
   const primalsOut = treeUnflatten(outTree.value, primalsOutFlat);
 
   // "cotangentsOut" because pullback
-  const fVjp = (cotangentsOut: any) => {
+  const fVjp = ((cotangentsOut: any) => {
     const [cotangentsOutFlat, outTree2] = treeFlatten(cotangentsOut);
     if (!outTree.value!.equals(outTree2)) {
       throw new TreeMismatchError("vjp", outTree.value!, outTree2);
     }
     const cotangentsInFlat = fVjpFlat(...cotangentsOutFlat.map(pureArray));
     return treeUnflatten(inTree, cotangentsInFlat);
-  };
+  }) as OwnedFunction<(...cotangents: any) => any>;
+  fVjp.dispose = dispose;
 
   return [primalsOut, fVjp];
 }
@@ -957,7 +976,8 @@ export function valueAndGrad(f: (...primals: any) => Tracer) {
     }
     // TODO: Use correct device
     const [ct, ...rest] = fVjp(scalar(1, { dtype: y.dtype }));
-    for (const r of rest) r.dispose();
+    for (const r of rest) treeDispose(r);
+    fVjp.dispose();
     return [y, ct] as [any, any];
   };
 }
@@ -969,7 +989,13 @@ export function jacrev(f: any) {
       throw new TypeError("jacrev only supports 1D inputs");
     }
     const [size] = x.shape;
-    const pullback = (ct: Tracer) => vjp(f, x)[1](ct)[0];
+    const pullback = (ct: Tracer) => {
+      const [y, fVjp] = vjp(f, x);
+      y.dispose();
+      const [ret] = fVjp(ct);
+      fVjp.dispose();
+      return ret;
+    };
     // TODO: Use correct device
     return vmap(pullback, [1])(eye(size, undefined, { dtype: x.dtype }));
   };

@@ -91,9 +91,9 @@ pnpm test
 - [x] Other dtypes like int32 and bool
 - [x] `jit()` support via Jaxprs and kernel fusion
 - [x] We figure out the `dispose()` / refcount / linear types stuff
-  - [ ] `dispose()` for saved "const" tracers in Jaxprs
-  - [ ] Garbage collection for JIT programs
-  - [ ] Memory scheduling, buffer allocation (can be tricky)
+  - [x] `dispose()` for saved "const" tracers in Jaxprs
+  - [x] Garbage collection for JIT programs
+  - [ ] Debug grad-grad-jit test producing a UseAfterFreeError
 - [ ] Demos: Navier-Stokes, neural networks, statistics
 - [x] Features for neural networks
   - [x] Convolution

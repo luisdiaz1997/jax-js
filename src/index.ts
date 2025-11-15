@@ -1,5 +1,6 @@
 import { Device, devices, init, setDevice } from "./backend";
 import * as jaxprModule from "./frontend/jaxpr";
+import { Jaxpr, OwnedFunction } from "./frontend/jaxpr";
 import * as jvpModule from "./frontend/jvp";
 import * as linearizeModule from "./frontend/linearize";
 import * as vmapModule from "./frontend/vmap";
@@ -18,11 +19,13 @@ export {
   type Device,
   devices,
   DType,
+  Jaxpr,
   type JsTree,
   type JsTreeDef,
   lax,
   nn,
   numpy,
+  type OwnedFunction,
   random,
   setDevice,
   tree,
@@ -67,6 +70,9 @@ export const makeJaxpr = jaxprModule.makeJaxpr as unknown as <
  * The function will be compiled the first time it is called with a set of
  * argument shapes.
  *
+ * You can call `.dispose()` on the returned, JIT-compiled function after all
+ * calls to free memory associated with array constants.
+ *
  * **Options:**
  * - `staticArgnums`: An array of argument indices to treat as static
  *   (compile-time constant). These arguments must be hashable, won't be traced,
@@ -79,7 +85,9 @@ export const jit = jaxprModule.jit as <
 >(
   f: F,
   opts?: jaxprModule.JitOpts,
-) => (...args: MapJsTree<Parameters<F>, Array, ArrayLike>) => ReturnType<F>;
+) => OwnedFunction<
+  (...args: MapJsTree<Parameters<F>, Array, ArrayLike>) => ReturnType<F>
+>;
 
 /**
  * Produce a local linear approximation to a function at a point using jvp() and
