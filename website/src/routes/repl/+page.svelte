@@ -1,6 +1,6 @@
 <script lang="ts">
   import { building } from "$app/environment";
-  import { goto } from "$app/navigation";
+  import { afterNavigate, goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { page } from "$app/state";
 
@@ -17,6 +17,7 @@
     LoaderIcon,
     PaletteIcon,
     PlayIcon,
+    ShareIcon,
     X,
   } from "lucide-svelte";
 
@@ -68,10 +69,22 @@
   let device: Device = $state("webgpu");
   let replEditor: ReplEditor;
 
+  afterNavigate(({ type }) => {
+    if (type === "enter") return; // Already handled on load
+    let selection = getSelectionFromUrl(page.url);
+    if (selection.sample !== undefined) {
+      sample = selection.sample;
+      replEditor.setText(src[`./${sample}.ts`]);
+    }
+    if (selection.content !== undefined) {
+      replEditor.setText(selection.content);
+    }
+  });
+
   function chooseSample(id: string) {
     replEditor.setText(src[`./${id}.ts`]);
     sample = id;
-    goto(page.url.pathname + `?sample=${sample}`, { replaceState: true });
+    goto(page.url.pathname + `?sample=${sample}`);
   }
 
   async function handleFormat() {
@@ -90,6 +103,26 @@
       replEditor.setCursorOffset(cursorOffset);
     } catch (e: any) {
       mockConsole.error(e);
+    }
+  }
+
+  async function handleShare() {
+    const { gzipSync } = await import("fflate");
+    const code = replEditor.getText();
+
+    // Encode the code as gzipped base64
+    const encoded = new TextEncoder().encode(code);
+    const compressed = gzipSync(encoded);
+    const base64Content = Base64.fromUint8Array(compressed, true); // URL-safe base64
+
+    const url = new URL(page.url.origin + page.url.pathname);
+    url.searchParams.set("content", base64Content);
+
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      mockConsole.log("Link copied to clipboard!");
+    } catch (e: any) {
+      mockConsole.error("Failed to copy link:", e);
     }
   }
 
@@ -364,6 +397,13 @@
               >
                 <PaletteIcon size={14} class="mr-1.5" />
                 Format
+              </button>
+              <button
+                class="hover:bg-gray-100 active:scale-105 transition-all rounded-md text-sm px-3 py-0.5 flex items-center disabled:opacity-50"
+                onclick={handleShare}
+              >
+                <ShareIcon size={14} class="mr-1.5" />
+                Share
               </button>
 
               <!-- Device selector -->
