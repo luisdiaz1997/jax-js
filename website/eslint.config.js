@@ -24,10 +24,12 @@ export default ts.config(
         ...globals.node,
       },
     },
+    parserOptions: {
+      tsconfigRootDir: import.meta.dirname,
+    },
   },
   {
     files: ["**/*.svelte"],
-
     languageOptions: {
       parserOptions: {
         parser: ts.parser,

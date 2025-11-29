@@ -23,7 +23,7 @@ const initializedBackends = new Map<Device, Backend>();
 initializedBackends.set("cpu", new CpuBackend());
 initializedBackends.set("wasm", new WasmBackend());
 
-/** Set the default device backend (must be initialized). */
+/** Set the default device for arrays (must be initialized first with `init()`). */
 export function setDevice(device: Device): void {
   if (initializedBackends.has(device)) {
     defaultBackend = device;
