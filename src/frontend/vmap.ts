@@ -1,4 +1,4 @@
-import { deepEqual, range, rep, unzip2, zip } from "../utils";
+import { checkAxis, deepEqual, range, rep, unzip2, zip } from "../utils";
 import { eye, pureArray } from "./array";
 import {
   AbstractValue,
@@ -57,7 +57,10 @@ function mappedAval(batchDim: number, aval: AbstractValue) {
 /** Move one axis to a different index. */
 export function moveaxis(x: TracerValue, src: number, dst: number) {
   const t = pureArray(x);
-  const perm = range(t.shape.length);
+  src = checkAxis(src, t.ndim);
+  dst = checkAxis(dst, t.ndim);
+  if (src === dst) return t;
+  const perm = range(t.ndim);
   perm.splice(src, 1);
   perm.splice(dst, 0, src);
   return transpose(t, perm);

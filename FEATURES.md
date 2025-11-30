@@ -270,7 +270,7 @@ Most operations behave the same way as they do in JAX.
 | `imag`                | ⚪️      | complex numbers                         |
 | `index_exp`           | ⚪️      | Python-specific                         |
 | `indices`             | 🟠      |                                         |
-| `inner`               | 🟠      |                                         |
+| `inner`               | 🟢      |                                         |
 | `insert`              | 🟠      |                                         |
 | `interp`              | 🟠      |                                         |
 | `intersect1d`         | 🔴      | sorting                                 |
@@ -352,7 +352,7 @@ Most operations behave the same way as they do in JAX.
 | `ogrid`               | ⚪️      | Python-specific                         |
 | `ones`                | 🟢      |                                         |
 | `ones_like`           | 🟢      |                                         |
-| `outer`               | 🟠      |                                         |
+| `outer`               | 🟢      |                                         |
 | `packbits`            | ⚪️      | no uint8 support                        |
 | `pad`                 | 🟢      |                                         |
 | `partition`           | 🔴      | sorting                                 |

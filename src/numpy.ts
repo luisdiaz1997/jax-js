@@ -718,8 +718,48 @@ export function dot(x: ArrayLike, y: ArrayLike): Array {
   return core.dot(x, y) as Array;
 }
 
-/** Vector dot product of two arrays. */
-export function vecdot(x: ArrayLike, y: ArrayLike): Array {
+/**
+ * Compute the inner product of two arrays.
+ *
+ * Unlike `jax.numpy.matmul()` or `jax.numpy.dot()`, this always performs a
+ * contraction on the last axis.
+ *
+ * Returned array has shape `[...x.shape[:-1], ...y.shape[:-1]]`.
+ */
+export function inner(x: ArrayLike, y: ArrayLike): Array {
+  x = reshape(x, shape(x).toSpliced(-1, 0, ...rep(ndim(y) - 1, 1)));
+  return core.dot(x, y) as Array;
+}
+
+/**
+ * Compute the outer product of two arrays.
+ *
+ * If the input arrays are not 1D, they will be flattened. Returned array will
+ * be of shape `[x.size, y.size]`.
+ */
+export function outer(x: ArrayLike, y: ArrayLike): Array {
+  x = ravel(x);
+  y = ravel(y);
+  return multiply(x.reshape([x.shape[0], 1]), y);
+}
+
+/** Vector dot product of two arrays along a given axis. */
+export function vecdot(
+  x: ArrayLike,
+  y: ArrayLike,
+  { axis }: { axis?: number } = {},
+): Array {
+  const xaxis = checkAxis(axis ?? -1, ndim(x));
+  const yaxis = checkAxis(axis ?? -1, ndim(y));
+  if (shape(x)[xaxis] !== shape(y)[yaxis]) {
+    throw new Error(
+      "vecdot: shapes " +
+        `${JSON.stringify(shape(x))} and ${JSON.stringify(shape(y))} ` +
+        `not aligned along axis ${axis}: ${shape(x)[xaxis]} != ${shape(y)[yaxis]}`,
+    );
+  }
+  x = moveaxis(x, xaxis, -1);
+  y = moveaxis(y, yaxis, -1);
   return core.dot(x, y) as Array;
 }
 
@@ -729,7 +769,7 @@ export function vecdot(x: ArrayLike, y: ArrayLike): Array {
  * Like vecdot() but flattens the arguments first into vectors.
  */
 export function vdot(x: ArrayLike, y: ArrayLike): Array {
-  return vecdot(ravel(x), ravel(y));
+  return core.dot(ravel(x), ravel(y)) as Array;
 }
 
 /**

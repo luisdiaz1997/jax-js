@@ -7,7 +7,15 @@ import {
   flatten as treeFlatten,
   unflatten as treeUnflatten,
 } from "../tree";
-import { checkAxis, DEBUG, isNumberPair, prod, range, rep } from "../utils";
+import {
+  checkAxis,
+  DEBUG,
+  isNumberPair,
+  isPermutation,
+  prod,
+  range,
+  rep,
+} from "../utils";
 import type { ConvParams } from "./convolution";
 import type { Jaxpr } from "./jaxpr";
 
@@ -239,6 +247,11 @@ export function transpose(x: TracerValue, perm?: number[]) {
   perm = perm
     ? perm.map((a) => checkAxis(a, ndim(x)))
     : range(ndim(x)).reverse();
+  if (!isPermutation(perm, ndim(x))) {
+    throw new Error(
+      `Invalid transpose permutation for ${ndim(x)} axes: ${JSON.stringify(perm)}`,
+    );
+  }
   return bind1(Primitive.Transpose, [x], { perm });
 }
 
