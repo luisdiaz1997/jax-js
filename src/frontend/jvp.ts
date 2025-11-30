@@ -8,6 +8,8 @@ import { unzip2, zip } from "../utils";
 import { pureArray, zerosLike } from "./array";
 import {
   AbstractValue,
+  asin,
+  atan,
   bind,
   bind1,
   bitcast,
@@ -161,6 +163,16 @@ const jvpRules: { [P in Primitive]: JvpRule<P> } = {
   },
   [Primitive.Cos]([x], [dx]) {
     return [[cos(x.ref)], [neg(sin(x)).mul(dx)]];
+  },
+  [Primitive.Asin]([x], [dx]) {
+    // d(asin(x)) = 1/sqrt(1 - x^2) * dx
+    const denom = sqrt(reciprocal(cast(1, x.dtype).sub(x.ref.mul(x.ref))));
+    return [[asin(x)], [denom.mul(dx)]];
+  },
+  [Primitive.Atan]([x], [dx]) {
+    // d(atan(x)) = 1/(1 + x^2) * dx
+    const denom = cast(1, x.dtype).add(x.ref.mul(x.ref));
+    return [[atan(x)], [dx.div(denom)]];
   },
   [Primitive.Exp]([x], [dx]) {
     // d(exp(x)) = exp(x) * dx

@@ -11,6 +11,8 @@ import { tuneNullopt } from "../tuner";
 import { DEBUG, rep, union } from "../utils";
 import { WasmAllocator } from "./wasm/allocator";
 import {
+  wasm_asin,
+  wasm_atan,
   wasm_cos,
   wasm_exp,
   wasm_log,
@@ -142,6 +144,8 @@ function codegenWasm(kernel: Kernel): Uint8Array<ArrayBuffer> {
   const funcs: Record<string, number> = {};
   if (distinctOps.has(AluOp.Sin)) funcs.sin = wasm_sin(cg);
   if (distinctOps.has(AluOp.Cos)) funcs.cos = wasm_cos(cg);
+  if (distinctOps.has(AluOp.Asin)) funcs.asin = wasm_asin(cg);
+  if (distinctOps.has(AluOp.Atan)) funcs.atan = wasm_atan(cg);
   if (distinctOps.has(AluOp.Exp)) funcs.exp = wasm_exp(cg);
   if (distinctOps.has(AluOp.Log)) funcs.log = wasm_log(cg);
   if (distinctOps.has(AluOp.Threefry2x32))
@@ -346,6 +350,8 @@ function translateExp(
     } else if (AluGroup.Unary.has(op)) {
       if (op === AluOp.Sin) (gen(src[0]), cg.call(funcs.sin));
       else if (op === AluOp.Cos) (gen(src[0]), cg.call(funcs.cos));
+      else if (op === AluOp.Asin) (gen(src[0]), cg.call(funcs.asin));
+      else if (op === AluOp.Atan) (gen(src[0]), cg.call(funcs.atan));
       else if (op === AluOp.Exp) (gen(src[0]), cg.call(funcs.exp));
       else if (op === AluOp.Log) (gen(src[0]), cg.call(funcs.log));
       else if (op === AluOp.Sqrt) (gen(src[0]), cg.f32.sqrt());

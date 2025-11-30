@@ -1050,6 +1050,41 @@ suite.each(devices)("device:%s", (device) => {
     });
   });
 
+  suite("jax.numpy.atan()", () => {
+    test("arctan values", () => {
+      const vals = [-1000, -100, -10, -1, 0, 1, 10, 100, 1000];
+      const atanvals: number[] = np.atan(np.array(vals)).js();
+      for (let i = 0; i < vals.length; i++) {
+        console.log(vals, atanvals);
+        expect(atanvals[i]).toBeCloseTo(Math.atan(vals[i]), 2);
+      }
+    });
+
+    test("arcsin and arccos values", () => {
+      const vals = [-1, -0.7, 0, 0.5, 1];
+      const asinvals: number[] = np.asin(np.array(vals)).js();
+      const acosvals: number[] = np.acos(np.array(vals)).js();
+      for (let i = 0; i < vals.length; i++) {
+        expect(asinvals[i]).toBeCloseTo(Math.asin(vals[i]), 2);
+        expect(acosvals[i]).toBeCloseTo(Math.acos(vals[i]), 2);
+      }
+    });
+
+    test("grad of arctan", () => {
+      const x = np.array([1, Math.sqrt(3), 0]);
+      const dx = grad((x: np.Array) => np.atan(x).sum())(x);
+      const expected = [0.5, 0.25, 1];
+      expect(dx.js()).toBeAllclose(expected);
+    });
+
+    test("grad of arcsin", () => {
+      const x = np.array([-0.5, 0, 0.5]);
+      const dx = grad((x: np.Array) => np.asin(x).sum())(x);
+      const expected = [2 / Math.sqrt(3), 1, 2 / Math.sqrt(3)];
+      expect(dx.js()).toBeAllclose(expected);
+    });
+  });
+
   suite("jax.numpy.repeat()", () => {
     test("repeats elements of 1D array", () => {
       const x = np.array([1, 2, 3]);

@@ -173,6 +173,12 @@ export class AluExp implements FpHashable {
   static cos(a: AluExp): AluExp {
     return new AluExp(AluOp.Cos, a.dtype, [a]);
   }
+  static asin(a: AluExp): AluExp {
+    return new AluExp(AluOp.Asin, a.dtype, [a]);
+  }
+  static atan(a: AluExp): AluExp {
+    return new AluExp(AluOp.Atan, a.dtype, [a]);
+  }
   static exp(a: AluExp): AluExp {
     return new AluExp(AluOp.Exp, a.dtype, [a]);
   }
@@ -394,10 +400,16 @@ export class AluExp implements FpHashable {
         break;
 
       case AluOp.Sin:
-        ret = [Math.sin(src[0].min), Math.sin(src[0].max)];
+        ret = [-1, 1];
         break;
       case AluOp.Cos:
-        ret = [Math.cos(src[0].min), Math.cos(src[0].max)];
+        ret = [-1, 1];
+        break;
+      case AluOp.Asin:
+        ret = [-Math.PI / 2, Math.PI / 2];
+        break;
+      case AluOp.Atan:
+        ret = [-Math.PI / 2, Math.PI / 2];
         break;
       case AluOp.Exp:
         ret = [Math.exp(src[0].min), Math.exp(src[0].max)];
@@ -979,6 +991,10 @@ export class AluExp implements FpHashable {
           return Math.sin(x);
         case AluOp.Cos:
           return Math.cos(x);
+        case AluOp.Asin:
+          return Math.asin(x);
+        case AluOp.Atan:
+          return Math.atan(x);
         case AluOp.Exp:
           return Math.exp(x);
         case AluOp.Log:
@@ -1220,6 +1236,8 @@ export enum AluOp {
 
   Sin = "Sin",
   Cos = "Cos",
+  Asin = "Asin",
+  Atan = "Atan",
   Exp = "Exp",
   Log = "Log",
   Sqrt = "Sqrt",
@@ -1256,6 +1274,8 @@ export const AluGroup = {
   Unary: new Set([
     AluOp.Sin,
     AluOp.Cos,
+    AluOp.Asin,
+    AluOp.Atan,
     AluOp.Exp,
     AluOp.Log,
     AluOp.Sqrt,
@@ -1274,6 +1294,8 @@ export const AluGroup = {
   RequiredFloat: new Set([
     AluOp.Sin,
     AluOp.Cos,
+    AluOp.Asin,
+    AluOp.Atan,
     AluOp.Exp,
     AluOp.Log,
     AluOp.Sqrt,

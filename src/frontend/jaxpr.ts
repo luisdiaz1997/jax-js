@@ -753,6 +753,8 @@ export const abstractEvalRules: { [P in Primitive]: AbstractEvalRule<P> } = {
   },
   [Primitive.Sin]: vectorizedUnopAbstractEval,
   [Primitive.Cos]: vectorizedUnopAbstractEval,
+  [Primitive.Asin]: vectorizedUnopAbstractEval,
+  [Primitive.Atan]: vectorizedUnopAbstractEval,
   [Primitive.Exp]: vectorizedUnopAbstractEval,
   [Primitive.Log]: vectorizedUnopAbstractEval,
   [Primitive.Sqrt]: vectorizedUnopAbstractEval,

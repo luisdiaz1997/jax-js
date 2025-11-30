@@ -218,7 +218,7 @@ export function wasm_log(cg: CodeGenerator): number {
  *         sin(z) ≈ z + z^3*(-1/6) + z^5*(1/120) + z^7*(-1/5040)
  *         cos(z) ≈ 1 + z^2*(-1/2) + z^4*(1/24) + z^6*(-1/720)
  */
-function sincos(cg: CodeGenerator): { q: number; sz: number; cz: number } {
+function _sincos(cg: CodeGenerator): { q: number; sz: number; cz: number } {
   const y = cg.local.declare(cg.f32);
   const qf = cg.local.declare(cg.f32);
   const q = cg.local.declare(cg.i32);
@@ -302,7 +302,7 @@ function sincos(cg: CodeGenerator): { q: number; sz: number; cz: number } {
  */
 export function wasm_sin(cg: CodeGenerator): number {
   return cg.function([cg.f32], [cg.f32], () => {
-    const { q, sz, cz } = sincos(cg);
+    const { q, sz, cz } = _sincos(cg);
     const mag = cg.local.declare(cg.f32);
 
     // select magnitude and apply sign: ((q & 2) ? -1 : 1) * ((q & 1) ? cz : sz)
@@ -329,7 +329,7 @@ export function wasm_sin(cg: CodeGenerator): number {
  */
 export function wasm_cos(cg: CodeGenerator): number {
   return cg.function([cg.f32], [cg.f32], () => {
-    const { q, sz, cz } = sincos(cg);
+    const { q, sz, cz } = _sincos(cg);
     const mag = cg.local.declare(cg.f32);
 
     // select magnitude and apply sign: ((q+1) & 2) ? -1 : 1) * ((q & 1) ? sz : cz)
@@ -348,6 +348,121 @@ export function wasm_cos(cg: CodeGenerator): number {
     cg.i32.const(2);
     cg.i32.and();
     cg.select();
+  });
+}
+
+/** Helper function for approximating arctan(x).  */
+function _atan(cg: CodeGenerator) {
+  const x = cg.local.declare(cg.f32);
+  const abs_x = cg.local.declare(cg.f32);
+  const z = cg.local.declare(cg.f32);
+  const z2 = cg.local.declare(cg.f32);
+  const p = cg.local.declare(cg.f32);
+
+  cg.local.set(x);
+
+  // abs_x = |x|
+  cg.local.get(x);
+  cg.f32.abs();
+  cg.local.set(abs_x);
+
+  // if |x| >= 1, use reciprocal: z = 1/|x|, else z = |x|
+  cg.f32.const(1.0);
+  cg.local.get(abs_x);
+  cg.f32.div();
+  cg.local.get(abs_x);
+  cg.local.get(abs_x);
+  cg.f32.const(1.0);
+  cg.f32.ge();
+  cg.select();
+  cg.local.set(z);
+
+  // z2 = z^2
+  cg.local.get(z);
+  cg.local.get(z);
+  cg.f32.mul();
+  cg.local.set(z2);
+
+  // Padé [5/2] rational approximation: atan(z) ≈ z * P(z^2) / Q(z^2)
+  // P(u) = -4*u^2 + 40*u + 105, where u = z^2
+  // Q(u) = 75*u + 105
+  // From Wu & Bercu (2017), max error ~1e-3 on [0,1]
+
+  // Compute P(z^2) = 105 + z^2*(40 + z^2*(-4))
+  cg.f32.const(-4.0);
+  cg.local.get(z2);
+  cg.f32.mul();
+  cg.f32.const(40.0);
+  cg.f32.add();
+  cg.local.get(z2);
+  cg.f32.mul();
+  cg.f32.const(105.0);
+  cg.f32.add();
+
+  // Compute Q(z^2) = 105 + 75*z^2
+  cg.f32.const(75.0);
+  cg.local.get(z2);
+  cg.f32.mul();
+  cg.f32.const(105.0);
+  cg.f32.add();
+
+  // result = z * (P / Q)
+  cg.f32.div();
+  cg.local.get(z);
+  cg.f32.mul();
+  cg.local.set(p);
+
+  // if |x| >= 1, result = π/2 - result
+  cg.f32.const(Math.PI / 2);
+  cg.local.get(p);
+  cg.f32.sub();
+  cg.local.get(p);
+  cg.local.get(abs_x);
+  cg.f32.const(1.0);
+  cg.f32.ge();
+  cg.select();
+
+  // apply sign of x
+  cg.local.get(x);
+  cg.f32.copysign();
+}
+
+/**
+ * Approximate atan(x).
+ *
+ * Method: if |x| < 1, use Padé [5/2] approximation: atan(x) ≈ x * P(x^2) / Q(x^2)
+ *         where P(u) = -4*u^2 + 40*u + 105
+ *               Q(u) = 75*u + 105
+ *         if |x| >= 1, use: atan(x) = sign(x)*π/2 - atan(1/x)
+ *         (Wu & Bercu 2017, max error ~1e-3 on [0,1])
+ */
+export function wasm_atan(cg: CodeGenerator): number {
+  return cg.function([cg.f32], [cg.f32], () => {
+    cg.local.get(0);
+    _atan(cg);
+  });
+}
+
+/**
+ * Approximate asin(x).
+ *
+ * Method: asin(x) = 2 * atan(x / (1 + sqrt(1 - x^2)))
+ */
+export function wasm_asin(cg: CodeGenerator): number {
+  return cg.function([cg.f32], [cg.f32], () => {
+    cg.local.get(0); // x
+    cg.f32.const(1.0);
+    cg.local.get(0);
+    cg.local.get(0);
+    cg.f32.mul(); // x^2
+    cg.f32.sub(); // 1 - x^2
+    cg.f32.sqrt(); // sqrt(1 - x^2)
+    cg.f32.const(1.0);
+    cg.f32.add(); // 1 + sqrt(1 - x^2)
+    cg.f32.div(); // x / (1 + sqrt(1 - x^2))
+    _atan(cg);
+    cg.f32.const(2.0);
+    cg.f32.mul();
   });
 }
 

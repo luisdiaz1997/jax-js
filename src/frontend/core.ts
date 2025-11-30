@@ -43,6 +43,8 @@ export enum Primitive {
   RandomBits = "random_bits",
   Sin = "sin",
   Cos = "cos",
+  Asin = "asin",
+  Atan = "atan",
   Exp = "exp",
   Log = "log",
   Sqrt = "sqrt",
@@ -150,6 +152,14 @@ export function sin(x: TracerValue) {
 
 export function cos(x: TracerValue) {
   return bind1(Primitive.Cos, [x]);
+}
+
+export function asin(x: TracerValue) {
+  return bind1(Primitive.Asin, [x]);
+}
+
+export function atan(x: TracerValue) {
+  return bind1(Primitive.Atan, [x]);
 }
 
 export function exp(x: TracerValue) {

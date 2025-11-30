@@ -112,7 +112,7 @@ Most operations behave the same way as they do in JAX.
 | `ndarray.at`          | ⚪️      | Python-specific                         |
 | `abs`                 | 🟢      |                                         |
 | `absolute`            | 🟢      |                                         |
-| `acos`                | ⚪️      | alias of `arccos`                       |
+| `acos`                | 🟢      |                                         |
 | `acosh`               | ⚪️      | alias of `arccosh`                      |
 | `add`                 | 🟢      |                                         |
 | `all`                 | 🟠      |                                         |
@@ -125,12 +125,12 @@ Most operations behave the same way as they do in JAX.
 | `apply_along_axis`    | 🟠      |                                         |
 | `apply_over_axes`     | 🟠      |                                         |
 | `arange`              | 🟢      |                                         |
-| `arccos`              | 🔴      | transcendental                          |
+| `arccos`              | 🟢      | transcendental                          |
 | `arccosh`             | 🟠      |                                         |
-| `arcsin`              | 🔴      | transcendental                          |
+| `arcsin`              | 🟢      | transcendental                          |
 | `arcsinh`             | 🟠      |                                         |
-| `arctan`              | 🔴      | transcendental                          |
-| `arctan2`             | 🔴      | transcendental                          |
+| `arctan`              | 🟢      | transcendental                          |
+| `arctan2`             | ⚪️      | alias of `atan2`                        |
 | `arctanh`             | 🟠      |                                         |
 | `argmax`              | 🟢      |                                         |
 | `argmin`              | 🟢      |                                         |
@@ -145,12 +145,12 @@ Most operations behave the same way as they do in JAX.
 | `array_split`         | 🟠      | `Array.slice` is supported              |
 | `array_str`           | 🔴      |                                         |
 | `asarray`             | ⚪️      | alias of `array`                        |
-| `asin`                | ⚪️      | alias of `arcsin`                       |
+| `asin`                | 🟢      |                                         |
 | `asinh`               | ⚪️      | alias of `arcsinh`                      |
 | `astype`              | 🟢      |                                         |
-| `atan`                | ⚪️      | alias of `arctan`                       |
+| `atan`                | 🟢      |                                         |
 | `atanh`               | ⚪️      | alias of `arctanh`                      |
-| `atan2`               | ⚪️      | alias of `arctan2`                      |
+| `atan2`               | 🟠      |                                         |
 | `atleast_1d`          | 🟠      |                                         |
 | `atleast_2d`          | 🟠      |                                         |
 | `atleast_3d`          | 🟠      |                                         |

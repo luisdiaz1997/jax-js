@@ -78,6 +78,10 @@ export const reciprocal = core.reciprocal as (x: ArrayLike) => Array;
 export const sin = core.sin as (x: ArrayLike) => Array;
 /** @function Element-wise cosine function (takes radians). */
 export const cos = core.cos as (x: ArrayLike) => Array;
+/** @function Element-wise inverse sine function (inverse of sin). */
+export const asin = core.asin as (x: ArrayLike) => Array;
+/** @function Element-wise inverse tangent function (inverse of tan). */
+export const atan = core.atan as (x: ArrayLike) => Array;
 /** @function Calculate the exponential of all elements in the input array. */
 export const exp = core.exp as (x: ArrayLike) => Array;
 /** @function Calculate the natural logarithm of all elements in the input array. */
@@ -909,11 +913,23 @@ export function square(x: ArrayLike): Array {
   return x.ref.mul(x);
 }
 
-/** Compute a trigonometric tangent of each element of input. */
+/** Element-wise tangent function (takes radians). */
 export function tan(x: ArrayLike): Array {
   x = fudgeArray(x);
   return sin(x.ref).div(cos(x));
 }
+
+/** Element-wise inverse cosine function (inverse of cos). */
+export function acos(x: ArrayLike): Array {
+  return subtract(pi / 2, asin(x));
+}
+
+/** @function Alias of `jax.numpy.asin()`. */
+export const arcsin = asin;
+/** @function Alias of `jax.numpy.acos()`. */
+export const arccos = acos;
+/** @function Alias of `jax.numpy.atan()`. */
+export const arctan = atan;
 
 /** Element-wise subtraction, with broadcasting. */
 export function subtract(x: ArrayLike, y: ArrayLike): Array {

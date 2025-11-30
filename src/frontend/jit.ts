@@ -497,6 +497,8 @@ const jitRules: { [P in Primitive]: JitRule<P> } = {
   },
   [Primitive.Sin]: unopJit(AluExp.sin),
   [Primitive.Cos]: unopJit(AluExp.cos),
+  [Primitive.Asin]: unopJit(AluExp.asin),
+  [Primitive.Atan]: unopJit(AluExp.atan),
   [Primitive.Exp]: unopJit(AluExp.exp),
   [Primitive.Log]: unopJit(AluExp.log),
   [Primitive.Sqrt]: unopJit(AluExp.sqrt),

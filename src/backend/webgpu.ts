@@ -398,6 +398,8 @@ function pipelineSource(device: GPUDevice, kernel: Kernel): ShaderInfo {
       const a = gen(src[0]);
       if (op === AluOp.Sin) source = `sin(${a})`;
       else if (op === AluOp.Cos) source = `cos(${a})`;
+      else if (op === AluOp.Asin) source = `asin(${a})`;
+      else if (op === AluOp.Atan) source = `atan(${a})`;
       else if (op === AluOp.Exp) source = `exp(${a})`;
       else if (op === AluOp.Log) source = `log(${a})`;
       else if (op === AluOp.Sqrt) source = `sqrt(${a})`;

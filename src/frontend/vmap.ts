@@ -3,6 +3,8 @@ import { eye, pureArray } from "./array";
 import {
   AbstractValue,
   add,
+  asin,
+  atan,
   bind,
   bitcast,
   broadcast,
@@ -232,6 +234,8 @@ const vmapRules: Partial<{ [P in Primitive]: VmapRule<P> }> = {
   // TODO: random_bits
   [Primitive.Sin]: unopBatcher(sin),
   [Primitive.Cos]: unopBatcher(cos),
+  [Primitive.Asin]: unopBatcher(asin),
+  [Primitive.Atan]: unopBatcher(atan),
   [Primitive.Exp]: unopBatcher(exp),
   [Primitive.Log]: unopBatcher(log),
   [Primitive.Sqrt]: unopBatcher(sqrt),
