@@ -37,8 +37,8 @@ const xnorm = norm(x.ref); // 1^2 + 2^2 + 3^2 = 14
 const xgrad = grad(norm)(x); // [2, 4, 6]
 ```
 
-The default backend runs on CPU, but on [supported browsers](https://caniuse.com/webgpu),
-you can switch to GPU for better performance.
+The default backend runs on CPU, but on [supported browsers](https://caniuse.com/webgpu), you can
+switch to GPU for better performance.
 
 ```js
 import { defaultDevice, numpy as np } from "@jax-js/jax";
@@ -122,7 +122,8 @@ pnpm -C website dev
 - [ ] Full support of weak types and committed devices
   - [ ] High-level ops have automatic type promotion
   - [ ] Weak types - [ref](https://docs.jax.dev/en/latest/type_promotion.html#weak-types)
-  - [ ] Committed devices - [ref](https://docs.jax.dev/en/latest/sharded-computation.html#sharded-data-placement)
+  - [ ] Committed devices -
+        [ref](https://docs.jax.dev/en/latest/sharded-computation.html#sharded-data-placement)
   - [ ] Device switching with `device_put()` between webgpu/cpu/wasm
 - [x] numpy/jax API compatibility table
 
@@ -131,7 +132,8 @@ pnpm -C website dev
 Contributions are welcomed in the following areas:
 
 - Adding support for more JAX functions and operations, see [compatibility table](./FEATURES.md).
-- Improving performance of the WebGPU and Wasm runtimes, generating better kernels, using SIMD and multithreading.
+- Improving performance of the WebGPU and Wasm runtimes, generating better kernels, using SIMD and
+  multithreading.
 - Adding WebGL runtime for older browsers that don't support WebGPU.
 - Making a fast transformer inference engine, comparing against onnxruntime-web.
 - Ergonomics and API improvements.

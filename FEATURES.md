@@ -3,7 +3,7 @@
 jax-js strives for _approximate_ API compatibility with the JAX python library (and through that,
 NumPy). But some features vary for a few reasons:
 
-1. **Data model:** JAX has _ownership_ of arrays using the `.ref` system, which obviates the need
+1. **Data model:** jax-js has _ownership_ of arrays using the `.ref` system, which obviates the need
    for APIs like `jit()`'s `donate_argnums` and `numpy.asarray()`.
 2. **Language primitives:** JavaScript has no named arguments, so method call signatures may take
    objects instead of Python's keyword arguments. Also, PyTrees are translated in spirit to "JsTree"
@@ -73,13 +73,19 @@ In the tables below, we use a color legend to refer to functions in JAX:
 | `custom_batching`    | 🔴      | core engine feature                             |
 | `Array`              | 🟢      |                                                 |
 
-Array primitives need to be called with methods like `a.add(b)` / `a.mul(b)` instead of `a + b` and `a * b` as in Python, which has overloading.
+Array primitives need to be called with methods like `a.add(b)` / `a.mul(b)` instead of `a + b` and
+`a * b` as in Python, which has overloading.
 
-Several other Array convenience methods are supported like `Array.min()` and `Array.sum()`, although some of them are only available in the `jax.numpy` namespace. This is for performance and to simplify the core Array prototype, since there's a bit of cruft there with esoteric methods like `Array.ptp()` — feel free to submit an issue if you disagree.
+Several other Array convenience methods are supported like `Array.min()` and `Array.sum()`, although
+some of them are only available in the `jax.numpy` namespace. This is for performance and to
+simplify the core Array prototype, since there's a bit of cruft there with esoteric methods like
+`Array.ptp()` — feel free to submit an issue if you disagree.
 
 ## [`jax.numpy` module](https://docs.jax.dev/en/latest/jax.numpy.html)
 
-**Data types:** We only support data types that can be efficiently worked with on the web. [Type promotion](https://docs.jax.dev/en/latest/type_promotion.html) behave similarly as in JAX, with "weak types" encoded in the compiler IR.
+**Data types:** We only support data types that can be efficiently worked with on the web.
+[Type promotion](https://docs.jax.dev/en/latest/type_promotion.html) behaves similarly as in JAX,
+with "weak types" encoded in the compiler IR.
 
 | Data type     | CPU (debug) | Wasm | WebGPU |
 | ------------- | ----------- | ---- | ------ |
@@ -91,7 +97,8 @@ Several other Array convenience methods are supported like `Array.min()` and `Ar
 | `np.float32`  | 🟢          | 🟢   | 🟢     |
 | `np.float64`  | 🟠          | 🟠   | 🔴     |
 
-Most operations behave the same way as they do in JAX. [API docs](https://www.ekzhang.com/jax-js/docs/modules/_jax-js_jax.numpy.html).
+Most operations behave the same way as they do in JAX.
+[API docs](https://www.ekzhang.com/jax-js/docs/modules/_jax-js_jax.numpy.html).
 
 | API                   | Support | Notes                                   |
 | --------------------- | ------- | --------------------------------------- |
@@ -455,7 +462,8 @@ Most operations behave the same way as they do in JAX. [API docs](https://www.ek
 
 ## [`jax.numpy.fft` module](https://docs.jax.dev/en/latest/jax.numpy.html#module-jax.numpy.fft)
 
-While FFT is not supported yet, we welcome contributions in this area. FFT is a very useful oepration, and we probably need to do some work to get it to work well on GPU within this library.
+While FFT is not supported yet, we welcome contributions in this area. FFT is a very useful
+operation, and we probably need to do some work to get it to work well on GPU within this library.
 
 | API         | Support | Notes |
 | ----------- | ------- | ----- |
@@ -480,7 +488,9 @@ While FFT is not supported yet, we welcome contributions in this area. FFT is a 
 
 ## [`jax.numpy.linalg` module](https://docs.jax.dev/en/latest/jax.numpy.html#module-jax.numpy.linalg)
 
-Similarly, the `linalg` module has some very important operations for linear algebra and matrices. `cholesky()` is probably the starting point for many of these operations, and [it seems tricky based on upstream issues](https://github.com/jax-ml/jax/issues/16321).
+Similarly, the `linalg` module has some very important operations for linear algebra and matrices.
+`cholesky()` is probably the starting point for many of these operations, and
+[it seems tricky based on upstream issues](https://github.com/jax-ml/jax/issues/16321).
 
 | API                | Support | Notes |
 | ------------------ | ------- | ----- |
@@ -518,13 +528,19 @@ Similarly, the `linalg` module has some very important operations for linear alg
 
 ## [`jax.lax` module](https://docs.jax.dev/en/latest/jax.lax.html)
 
-Only a few functions in `jax.lax` have been implemented, notably `conv_general_dilated` for convolutions.
+Only a few functions in `jax.lax` have been implemented, notably `conv_general_dilated` for
+convolutions.
 
-In the future, the library may need a rework to add support for `lax` operations, which are lower-level (semantics-wise, they don't do automatic type promotion). The reason why jax-js did not start from `lax` is because JAX is built on XLA as foundations and started with `lax` wrappers, but jax-js was built from scratch.
+In the future, the library may need a rework to add support for `lax` operations, which are
+lower-level (semantics-wise, they don't do automatic type promotion). The reason why jax-js did not
+start from `lax` is because JAX is built on XLA as foundations and started with `lax` wrappers, but
+jax-js was built from scratch.
 
 ## [`jax.random` module](https://docs.jax.dev/en/latest/jax.random.html)
 
-JAX uses a [Threefry2x32](https://docs.jax.dev/en/latest/jep/263-prng.html) random number generator. jax-js implements the same PRNG, with bitwise identical outputs. However, most samplers in the `random` module have not been implemented yet, these can be added easily.
+JAX uses a [Threefry2x32](https://docs.jax.dev/en/latest/jep/263-prng.html) random number generator.
+jax-js implements the same PRNG, with bitwise identical outputs. However, most samplers in the
+`random` module have not been implemented yet, these can be added easily.
 
 | API             | Support | Notes                         |
 | --------------- | ------- | ----------------------------- |
@@ -536,7 +552,8 @@ JAX uses a [Threefry2x32](https://docs.jax.dev/en/latest/jep/263-prng.html) rand
 | `clone`         | ⚪️      | use `.ref`                    |
 | `PRNGKey`       | ⚪️      | legacy                        |
 
-**Samplers:** These are all 🟠 assuming that sampling from distributions is usually easier than modeling their transcendental CDFs (e.g., normal via Box-Muller).
+**Samplers:** These are all 🟠 assuming that sampling from distributions is usually easier than
+modeling their transcendental CDFs (e.g., normal via Box-Muller).
 
 | API                    | Support | Notes |
 | ---------------------- | ------- | ----- |
@@ -582,7 +599,10 @@ JAX uses a [Threefry2x32](https://docs.jax.dev/en/latest/jep/263-prng.html) rand
 
 ## [`jax.nn` module](https://docs.jax.dev/en/latest/jax.nn.html)
 
-These provide basic helpers for neural networks, though it falls short of a full "neural network framework" like `torch.nn.Module`. Thinking of trying to port an API like [Equinox](https://github.com/patrick-kidger/equinox) under the jax-js namespace as well, althuogh it would need substantial changes to work well in JavaScript.
+These provide basic helpers for neural networks, though it falls short of a full "neural network
+framework" like `torch.nn.Module`. Thinking of trying to port an API like
+[Equinox](https://github.com/patrick-kidger/equinox) under the jax-js namespace as well, although it
+would need substantial changes to work well in JavaScript.
 
 **Activation functions:**
 
@@ -631,7 +651,9 @@ These provide basic helpers for neural networks, though it falls short of a full
 
 ## Other `jax.*` modules
 
-The `jax.tree` module is available but differs significantly in how it is implemented. JsTree is based on nested JavaScript objects and arrays similar to JSON format, and it has generic TypeScript bindings.
+The `jax.tree` module is available but differs significantly in how it is implemented. JsTree is
+based on nested JavaScript objects and arrays similar to JSON format, and it has generic TypeScript
+bindings.
 
 These modules are unimplemented:
 
@@ -658,13 +680,15 @@ These modules are unimplemented:
 
 ## [`optax`](https://optax.readthedocs.io/en/latest/index.html)
 
-We have ported a subset of the [Optax](https://github.com/google-deepmind/optax) gradient processing and optimization library at `@jax-js/optax`. You can install this alongside `@jax-js/jax`.
+We have ported a subset of the [Optax](https://github.com/google-deepmind/optax) gradient processing
+and optimization library at `@jax-js/optax`. You can install this alongside `@jax-js/jax`.
 
 ```bash
 npm i @jax-js/optax
 ```
 
-[API docs](https://www.ekzhang.com/jax-js/docs/modules/_jax-js_optax.html). Currently, the following optimizers are supported:
+[API docs](https://www.ekzhang.com/jax-js/docs/modules/_jax-js_optax.html). Currently, the following
+optimizers are supported:
 
 - SGD
 - Adam
