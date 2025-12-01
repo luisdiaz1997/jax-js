@@ -1031,21 +1031,23 @@ export function rad2deg(x: ArrayLike): Array {
 /** @function Alias of `jax.numpy.rad2deg()`. */
 export const degrees = rad2deg;
 
-/** Computes first array raised to power of second array, element-wise. */
-export function power(x1: ArrayLike, x2: ArrayLike): Array {
+/**
+ * @function
+ * Computes first array raised to power of second array, element-wise.
+ */
+export const power = jit((x1: Array, x2: Array) => {
   return exp(log(x1).mul(x2));
-}
+});
 
 /** @function Alias of `jax.numpy.power()`. */
 export const pow = power;
 
-/** Calculate the element-wise cube root of the input array. */
-export function cbrt(x: ArrayLike): Array {
-  x = fudgeArray(x);
+/** @function Calculate the element-wise cube root of the input array. */
+export const cbrt = jit((x: Array) => {
   // This isn't just power(x, 1/3) since we need to handle negative numbers.
   const sgn = where(less(x.ref, 0), -1, 1);
   return sgn.ref.mul(exp(log(x.mul(sgn)).mul(1 / 3)));
-}
+});
 
 /**
  * @function
