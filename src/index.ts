@@ -11,6 +11,7 @@ import { Array, ArrayLike, DType } from "./numpy";
 import * as random from "./random";
 import * as tree from "./tree";
 import type { JsTree, JsTreeDef, MapJsTree } from "./tree";
+import { setDebug } from "./utils";
 
 import "./polyfills";
 
@@ -29,6 +30,7 @@ export {
   numpy,
   type OwnedFunction,
   random,
+  setDebug,
   tree,
 };
 

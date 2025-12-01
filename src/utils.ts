@@ -1,6 +1,22 @@
 /** @file Generic programming utilities with no dependencies on library code. */
 
-export const DEBUG: number = 3;
+export let DEBUG: number = 0;
+
+/**
+ * Set the debug level for verbose logging.
+ *
+ * 1. JIT compile logs
+ * 2. Shader code
+ * 3. Expressions and metadata
+ * 4. JIT programs, tuning details
+ * 5. Most verbose operation traces
+ *
+ * This is an experimental API and may change in behavior. Do not rely on this
+ * in production.
+ */
+export function setDebug(level: number) {
+  DEBUG = level;
+}
 
 export function unzip2<T, U>(pairs: Iterable<[T, U]>): [T[], U[]] {
   const lst1: T[] = [];
