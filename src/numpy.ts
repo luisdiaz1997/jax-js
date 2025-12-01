@@ -1048,40 +1048,79 @@ export function cbrt(x: ArrayLike): Array {
 }
 
 /**
+ * @function
  * Calculate element-wise hyperbolic sine of input.
  *
  * `sinh(x) = (exp(x) - exp(-x)) / 2`
  */
-export function sinh(x: ArrayLike): Array {
+export const sinh = jit((x: Array) => {
   const ex = exp(x);
   const emx = reciprocal(ex.ref);
   return ex.sub(emx).mul(0.5);
-}
+});
 
 /**
+ * @function
  * Calculate element-wise hyperbolic cosine of input.
  *
  * `cosh(x) = (exp(x) + exp(-x)) / 2`
  */
-export function cosh(x: ArrayLike): Array {
+export const cosh = jit((x: Array) => {
   const ex = exp(x);
   const emx = reciprocal(ex.ref);
   return ex.add(emx).mul(0.5);
-}
+});
 
 /**
+ * @function
  * Calculate element-wise hyperbolic tangent of input.
  *
  * `tanh(x) = sinh(x)/cosh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))`
  */
-export function tanh(x: ArrayLike): Array {
+export const tanh = jit((x: Array) => {
   // Avoid overflow for large x by taking advantage of alternate representations:
   // tanh(x) = -tanh(-x) = (1 - e^{-2x}) / (1 + e^{-2x})
-  x = fudgeArray(x);
   const negsgn = where(less(x.ref, 0), 1, -1);
   const en2x = exp(x.mul(negsgn.ref).mul(2));
   return en2x.ref.sub(1).div(en2x.add(1)).mul(negsgn);
-}
+});
+
+/**
+ * @function
+ * Calculate element-wise inverse hyperbolic sine of input.
+ *
+ * `arcsinh(x) = ln(x + sqrt(x^2 + 1))`
+ */
+export const arcsinh = jit((x: Array) => {
+  return log(x.ref.add(sqrt(square(x).add(1))));
+});
+
+/**
+ * @function
+ * Calculate element-wise inverse hyperbolic cosine of input.
+ *
+ * `arccosh(x) = ln(x + sqrt(x^2 - 1))`
+ */
+export const arccosh = jit((x: Array) => {
+  return log(x.ref.add(sqrt(square(x).sub(1))));
+});
+
+/**
+ * @function
+ * Calculate element-wise inverse hyperbolic tangent of input.
+ *
+ * `arctanh(x) = 0.5 * ln((1 + x) / (1 - x))`
+ */
+export const arctanh = jit((x: Array) => {
+  return log(add(1, x.ref).div(subtract(1, x))).mul(0.5);
+});
+
+/** @function Alias of `jax.numpy.arcsinh()`. */
+export const asinh = arcsinh;
+/** @function Alias of `jax.numpy.arccosh()`. */
+export const acosh = arccosh;
+/** @function Alias of `jax.numpy.arctanh()`. */
+export const atanh = arctanh;
 
 /**
  * Compute the variance of an array.

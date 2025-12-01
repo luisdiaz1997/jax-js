@@ -17,9 +17,9 @@ Other features just aren't implemented yet. But those can probably be added easi
 In the tables below, we use a color legend to refer to functions in JAX:
 
 - 🟢 = supported **(~35%)**
-- 🟡 = supported, with API limitations **(~1%)**
+- 🟡 = supported, with API limitations **(~2%)**
 - 🟠 = not supported, easy to add (<1 day) **(~40%)**
-- 🔴 = not supported **(~25%)**
+- 🔴 = not supported **(~20%)**
 - ⚪️ = not applicable, will not be supported (see notes)
 
 ## [`jax`](https://docs.jax.dev/en/latest/jax.html)
@@ -113,7 +113,7 @@ Most operations behave the same way as they do in JAX.
 | `abs`                 | 🟢      |                                         |
 | `absolute`            | 🟢      |                                         |
 | `acos`                | 🟢      |                                         |
-| `acosh`               | ⚪️      | alias of `arccosh`                      |
+| `acosh`               | 🟢      |                                         |
 | `add`                 | 🟢      |                                         |
 | `all`                 | 🟠      |                                         |
 | `allclose`            | 🟡      | no `equal_nan` option                   |
@@ -125,13 +125,13 @@ Most operations behave the same way as they do in JAX.
 | `apply_along_axis`    | 🟠      |                                         |
 | `apply_over_axes`     | 🟠      |                                         |
 | `arange`              | 🟢      |                                         |
-| `arccos`              | 🟢      | transcendental                          |
-| `arccosh`             | 🟠      |                                         |
-| `arcsin`              | 🟢      | transcendental                          |
-| `arcsinh`             | 🟠      |                                         |
-| `arctan`              | 🟢      | transcendental                          |
+| `arccos`              | 🟢      |                                         |
+| `arccosh`             | 🟢      |                                         |
+| `arcsin`              | 🟢      |                                         |
+| `arcsinh`             | 🟢      |                                         |
+| `arctan`              | 🟢      |                                         |
 | `arctan2`             | 🟢      |                                         |
-| `arctanh`             | 🟠      |                                         |
+| `arctanh`             | 🟢      |                                         |
 | `argmax`              | 🟢      |                                         |
 | `argmin`              | 🟢      |                                         |
 | `argpartition`        | 🔴      | sorting                                 |
@@ -146,10 +146,10 @@ Most operations behave the same way as they do in JAX.
 | `array_str`           | 🔴      |                                         |
 | `asarray`             | ⚪️      | alias of `array`                        |
 | `asin`                | 🟢      |                                         |
-| `asinh`               | ⚪️      | alias of `arcsinh`                      |
+| `asinh`               | 🟢      |                                         |
 | `astype`              | 🟢      |                                         |
 | `atan`                | 🟢      |                                         |
-| `atanh`               | ⚪️      | alias of `arctanh`                      |
+| `atanh`               | 🟢      |                                         |
 | `atan2`               | 🟢      |                                         |
 | `atleast_1d`          | 🟠      |                                         |
 | `atleast_2d`          | 🟠      |                                         |
