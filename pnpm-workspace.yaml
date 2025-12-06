@@ -5,8 +5,8 @@ packages:
 ignoreWorkspaceRootCheck: true
 
 onlyBuiltDependencies:
-  - '@jax-js/jax'
-  - '@tailwindcss/oxide'
+  - "@jax-js/jax"
+  - "@tailwindcss/oxide"
   - core-js
   - esbuild
   - msw
