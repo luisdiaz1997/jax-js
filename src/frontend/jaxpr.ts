@@ -277,6 +277,14 @@ export class Jaxpr implements FpHashable {
         } else {
           newEqns.push(eqn);
         }
+      } else if (eqn.primitive === Primitive.Neg) {
+        const [a] = inputs;
+        const c = eqn.outBinders[0];
+        if (atomIsLit(a)) {
+          context.set(c, new Lit(a.dtype, -a.value));
+        } else {
+          newEqns.push(eqn);
+        }
       } else if (eqn.primitive === Primitive.Mul) {
         const [a, b] = inputs;
         const c = eqn.outBinders[0];
