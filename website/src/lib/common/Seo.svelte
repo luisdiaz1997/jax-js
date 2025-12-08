@@ -17,4 +17,5 @@
     property="og:image"
     content="https://jax-js.com/images/social-image.png"
   />
+  <meta property="twitter:card" content="summary_large_image" />
 </svelte:head>
