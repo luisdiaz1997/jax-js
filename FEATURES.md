@@ -151,9 +151,9 @@ Most operations behave the same way as they do in JAX.
 | `atan`                | 🟢      |                                         |
 | `atanh`               | 🟢      |                                         |
 | `atan2`               | 🟢      |                                         |
-| `atleast_1d`          | 🟠      |                                         |
-| `atleast_2d`          | 🟠      |                                         |
-| `atleast_3d`          | 🟠      |                                         |
+| `atleast_1d`          | ⚪️      | confusing, use `reshape`                |
+| `atleast_2d`          | ⚪️      | confusing, use `reshape`                |
+| `atleast_3d`          | ⚪️      | confusing, use `reshape`                |
 | `average`             | 🟠      | `mean` is supported                     |
 | `bartlett`            | 🟠      |                                         |
 | `bincount`            | 🔴      | sorting                                 |
