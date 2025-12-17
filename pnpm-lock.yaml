@@ -51,8 +51,8 @@ importers:
         specifier: ^0.28.14
         version: 0.28.14(typescript@5.9.3)
       typedoc-theme-fresh:
-        specifier: ^0.2.1
-        version: 0.2.1(typedoc@0.28.14(typescript@5.9.3))
+        specifier: ^0.2.2
+        version: 0.2.2(typedoc@0.28.14(typescript@5.9.3))
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -2927,8 +2927,8 @@ packages:
     resolution: {integrity: sha512-3KS2b+kL7fsuk/eJZ7EQdnEmQoaho/r6KUef7hxvltNA5DR8NAUM+8wJMbJyZ4G9/7i3v5zPBIMN5aybAh2/Jg==}
     engines: {node: '>= 0.4'}
 
-  typedoc-theme-fresh@0.2.1:
-    resolution: {integrity: sha512-LQMQka0wrgG+L/Ar/VgZbbq1d0JwzZbDm+N6jaKtMwSUXdWQ4RNBQSmr0y800uJzW4jtqtVGAYjgoDmNhmMPeg==}
+  typedoc-theme-fresh@0.2.2:
+    resolution: {integrity: sha512-1WU2BczwRYNVQ1jXoe0U/VNo/L/pbd5BI5ieXD51SMYruHqjtLF8ofwrojrfAs7v1rBuaNAq7OC5u0ZhndZZXA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       typedoc: ^0.28.14
@@ -6077,7 +6077,7 @@ snapshots:
       possible-typed-array-names: 1.1.0
       reflect.getprototypeof: 1.0.10
 
-  typedoc-theme-fresh@0.2.1(typedoc@0.28.14(typescript@5.9.3)):
+  typedoc-theme-fresh@0.2.2(typedoc@0.28.14(typescript@5.9.3)):
     dependencies:
       typedoc: 0.28.14(typescript@5.9.3)
 

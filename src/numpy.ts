@@ -953,8 +953,8 @@ export function acos(x: ArrayLike): Array {
  * Return element-wise hypotenuse for the given legs of a right triangle.
  *
  * In the original NumPy/JAX implementation, this function is more numerically
- * stable than sqrt(x1**2 + x2**2). We don't currently implement those stability
- * improvements.
+ * stable than `sqrt(x1**2 + x2**2)`. We don't currently implement those
+ * stability improvements.
  */
 export const hypot = jit(function hypot(x1: Array, x2: Array) {
   return sqrt(square(x1).add(square(x2)));
