@@ -63,7 +63,7 @@
     "tsdown": "^0.13.2",
     "tsx": "^4.20.3",
     "typedoc": "^0.28.14",
-    "typedoc-theme-fresh": "^0.2.2",
+    "typedoc-theme-fresh": "^0.2.3",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vitest": "^4.0.9"
