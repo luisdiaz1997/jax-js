@@ -26,23 +26,44 @@ async function sh(
   });
 }
 
+function sourceLinkOptions(dir: string): string {
+  return [
+    // Disable automatic Git detection and pass in specific link.
+    "--disableGit",
+    "--gitRevision main",
+    `--sourceLinkTemplate "https://github.com/ekzhang/jax-js/blob/{gitRevision}/${dir}/{path}#L{line}"`,
+  ].join(" ");
+}
+
+const cmds: Promise<void>[] = [];
+
 // Docs for @jax-js/jax.
-await sh`pnpm typedoc src/index.ts --json docs-json/jax.json`;
+cmds.push(
+  sh`pnpm typedoc src/index.ts ${sourceLinkOptions("src")} --readme none --json docs-json/jax.json`,
+);
 
 // Generate docs for each package in the packages directory.
 for (const pkg of await readdir("packages")) {
-  await sh`pnpm typedoc packages/${pkg}/src/index.ts --json docs-json/${pkg}.json`;
+  cmds.push(
+    sh`pnpm typedoc packages/${pkg}/src/index.ts ${sourceLinkOptions(`packages/${pkg}/src`)} --json docs-json/${pkg}.json`,
+  );
 }
+
+await Promise.all(cmds);
 
 // Merge all package docs into a single HTML output.
 await sh`
 pnpm typedoc \
   --name jax-js \
   --entryPointStrategy merge \
-  --readme none \
+  --favicon website/static/favicon.ico \
+  --titleLink "https://jax-js.com" \
   --searchInDocuments \
   --searchInComments \
+  --router structure \
   --navigation.includeFolders false \
+  --projectDocuments "README.md" \
+  --readme none \
   --plugin typedoc-theme-fresh \
   --theme fresh \
   "docs-json/*.json"

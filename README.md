@@ -159,9 +159,9 @@ function bar_good(x: np.Array, skip: boolean) {
 You can assume that every function in jax-js takes ownership properly, except with a couple of very
 rare exceptions that are documented.
 
-### `grad()`, `vmap()` and `jit()`
+### grad(), vmap() and jit()
 
-The famous, composable transformats in JAX are also supported in jax-js. Here is a simple example of
+JAX's signature composable transformations are also supported in jax-js. Here is a simple example of
 using `grad` and `vmap` to compute the derivaive of a function:
 
 ```ts
