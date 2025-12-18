@@ -34,15 +34,12 @@ export function fromSafetensors(file: safetensors.File): MobileCLIP {
   const mappedWeights = weightMapper.mapObject(file.tensors);
   const hydrated: Record<string, np.Array> = {};
   for (const [key, value] of Object.entries(mappedWeights)) {
-    console.log(key);
-    console.log(value);
+    // console.log(key, value);
     if (value.dtype === "F16") {
-      hydrated[key] = np
-        .array(value.data as Float16Array<ArrayBuffer>, {
-          dtype: np.float16,
-          shape: value.shape,
-        })
-        .astype(np.float32);
+      hydrated[key] = np.array(value.data as Float16Array<ArrayBuffer>, {
+        dtype: np.float16,
+        shape: value.shape,
+      });
     } else if (value.dtype === "I64") {
       // Ignored, these are metadata for BatchNorm.
       continue;
