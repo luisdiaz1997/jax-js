@@ -1,5 +1,5 @@
 import { assertNonNull, checkAxis, range, rep, unzip2, zip } from "../utils";
-import { eye, pureArray } from "./array";
+import { arange, eye, pureArray } from "./array";
 import {
   AbstractValue,
   add,
@@ -18,6 +18,7 @@ import {
   flattenFun,
   flip,
   fullRaise,
+  gather,
   idiv,
   log,
   max,
@@ -189,14 +190,19 @@ function broadcastBatcher(op: (...x: Tracer[]) => Tracer): VmapRule<Primitive> {
     if (args.length === 0) {
       throw new Error("Empty list in broadcastBatcher");
     }
-    const nd = Math.max(...args.map(ndim));
+    // Determine the output ndim after broadcasting, including batch.
+    const nd = Math.max(
+      ...args.map((x, i) => ndim(x) + (dims[i] === null ? 1 : 0)),
+    );
+
     const firstIdx = dims.findIndex((d) => d !== null);
     const firstBdim = dims[firstIdx]! - args[firstIdx].ndim; // e.g., -1 if last dim
     if (
       // If only agreeing batch dims, or scalars, just call the primitive.
       zip(args, dims).every(
         ([x, d]) =>
-          ndim(x) < -firstBdim || (d !== null && d - x.ndim === firstBdim),
+          (d === null && ndim(x) < -firstBdim) ||
+          (d !== null && d - x.ndim === firstBdim),
       )
     ) {
       return [[op(...args)], [nd + firstBdim]];
@@ -205,7 +211,7 @@ function broadcastBatcher(op: (...x: Tracer[]) => Tracer): VmapRule<Primitive> {
     // Move the batch axes to the front. If needed, expand arrays so that all
     // inputs have the same number of dimensions.
     args = args.map((x, i) => {
-      if (ndim(x) === 0) return x;
+      if (dims[i] === null) return x;
       x = moveBatchAxis(axisSize, dims[i], 0, x);
       if (x.ndim < nd)
         x = x.reshape([
@@ -303,7 +309,51 @@ const vmapRules: Partial<{ [P in Primitive]: VmapRule<P> }> = {
     const newWidth = width.toSpliced(xBdim, 0, [0, 0]);
     return [[pad(x, newWidth)], [xBdim]];
   },
-  // TODO: gather
+  [Primitive.Gather](
+    axisSize,
+    [x, ...indices],
+    [xBdim, ...indicesBdim],
+    { axis, outDim },
+  ) {
+    if (indicesBdim.every((d) => d === null)) {
+      // If none of the indices are mapped, this is an ordinary Gather on larger
+      // x array. Just recalculate axis numbers.
+      assertNonNull(xBdim);
+      const newAxis = axis.map((ax) => ax + (xBdim <= ax ? 1 : 0));
+      let newBdim = xBdim - axis.filter((ax) => ax < xBdim).length;
+      let newOutDim = outDim;
+      if (newOutDim < newBdim) newBdim += axis.length;
+      else newOutDim += 1;
+      return [[gather(x, indices, newAxis, newOutDim)], [newBdim]];
+    }
+    // If indices are mapped, move those mapped axes to front.
+    const nd = Math.max(
+      ...indices.map((m, i) => ndim(m) + (indicesBdim[i] === null ? 1 : 0)),
+    );
+    indices = indices.map((m, i) => {
+      if (indicesBdim[i] === null) return m;
+      m = moveBatchAxis(axisSize, indicesBdim[i], 0, m);
+      if (m.ndim < nd)
+        m = m.reshape([
+          m.shape[0],
+          ...rep(nd - m.ndim, 1),
+          ...m.shape.slice(1),
+        ]);
+      return m;
+    });
+    // Now there are two cases. If x is not mapped, dispatch directly.
+    if (xBdim === null) {
+      return [[gather(x, indices, axis, outDim)], [outDim]];
+    } else {
+      // Otherwise, we need a new `arange(axisSize)` index.
+      // For simplicity, let's also move x's batch axis to the front.
+      x = moveBatchAxis(axisSize, xBdim, 0, x);
+      const newAxis = [0, ...axis.map((ax) => ax + 1)];
+      const extraBatchIndex = arange(axisSize).reshape([-1, ...rep(nd - 1, 1)]);
+      indices.splice(0, 0, extraBatchIndex);
+      return [[gather(x, indices, newAxis, outDim)], [outDim]];
+    }
+  },
   [Primitive.JitCall](axisSize, args, dims, { name, jaxpr }) {
     const { newJaxpr, newConsts } = vmapJaxpr(jaxpr, axisSize, dims);
     const outs = bind(
