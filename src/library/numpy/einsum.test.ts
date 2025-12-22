@@ -4,43 +4,43 @@ import { computePath, parseEinsumExpression } from "./einsum";
 
 suite("parseEinsumExpression()", () => {
   test("can parse explicit expressions", () => {
-    let expr = parseEinsumExpression("ij,jk->ik", []);
+    let expr = parseEinsumExpression("ij,jk->ik", [[], []]);
     expect(expr.lhsIndices).toEqual([
       [0, 1],
       [1, 2],
     ]);
     expect(expr.rhsIndex).toEqual([0, 2]);
 
-    expr = parseEinsumExpression("iii->i", []);
+    expr = parseEinsumExpression("iii->i", [[]]);
     expect(expr.lhsIndices).toEqual([[0, 0, 0]]);
     expect(expr.rhsIndex).toEqual([0]);
 
-    expr = parseEinsumExpression("ji->ji", []);
+    expr = parseEinsumExpression("ji->ji", [[]]);
     expect(expr.lhsIndices).toEqual([[1, 0]]);
     expect(expr.rhsIndex).toEqual([1, 0]);
 
-    expr = parseEinsumExpression("ij->ji", []);
+    expr = parseEinsumExpression("ij->ji", [[]]);
     expect(expr.lhsIndices).toEqual([[0, 1]]);
     expect(expr.rhsIndex).toEqual([1, 0]);
 
-    expr = parseEinsumExpression("->", []);
+    expr = parseEinsumExpression("->", [[]]);
     expect(expr.lhsIndices).toEqual([[]]);
     expect(expr.rhsIndex).toEqual([]);
   });
 
   test("can parse implicit expressions", () => {
-    let expr = parseEinsumExpression("ij,jk", []);
+    let expr = parseEinsumExpression("ij,jk", [[], []]);
     expect(expr.lhsIndices).toEqual([
       [0, 1],
       [1, 2],
     ]);
     expect(expr.rhsIndex).toEqual([0, 2]);
 
-    expr = parseEinsumExpression("iii", []);
+    expr = parseEinsumExpression("iii", [[]]);
     expect(expr.lhsIndices).toEqual([[0, 0, 0]]);
     expect(expr.rhsIndex).toEqual([]);
 
-    expr = parseEinsumExpression("ji", []);
+    expr = parseEinsumExpression("ji", [[]]);
     expect(expr.lhsIndices).toEqual([[1, 0]]);
     expect(expr.rhsIndex).toEqual([0, 1]);
   });
@@ -68,6 +68,16 @@ suite("parseEinsumExpression()", () => {
     ]);
     expect(expr.lhsIndices).toEqual([[2, 0, 1], [1]]);
     expect(expr.rhsIndex).toEqual([2, 0]);
+  });
+
+  test("supports numpy broadcasting", () => {
+    const expr = parseEinsumExpression("..., ..., ...", [
+      [],
+      [3n, 4n],
+      [5n, 3n, 4n],
+    ]);
+    expect(expr.lhsIndices).toEqual([[], [1, 2], [0, 1, 2]]);
+    expect(expr.rhsIndex).toEqual([0, 1, 2]);
   });
 });
 

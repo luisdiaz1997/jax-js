@@ -58,20 +58,32 @@ export function parseEinsumExpression(
       .sort()
       .map((c, i) => [c, i]),
   );
-  const componentsToIndices = (components: string[]) =>
-    components.flatMap((c) =>
-      c === "..."
-        ? range(identToIndex.size, identToIndex.size + ellipsisRank!)
-        : identToIndex.get(c)!,
-    );
+  const componentsToIndices = (components: string[], rank?: number) =>
+    components.flatMap((c) => {
+      if (c === "...") {
+        // Full rank if `(components.length - 1) + ellipsisRank === rank`
+        const start =
+          rank !== undefined ? components.length - 1 + ellipsisRank - rank : 0;
+        return range(
+          identToIndex.size + start,
+          identToIndex.size + ellipsisRank!,
+        );
+      }
+      return identToIndex.get(c)!;
+    });
 
-  let ellipsisRank: number | null = null; // Number of dimensions that "..." represents
+  let ellipsisRank: number = 0; // Number of dimensions that "..." represents
 
   const [lhs, rhs] = expr.split("->");
-  const lhsIndices: number[][] = [];
-  for (const [i, part] of lhs.split(",").entries()) {
+  const lhsComponents = lhs
+    .split(",")
+    .map((part) => [...part.matchAll(EINSUM_COMPONENT_RE).map((m) => m[0])]);
+  const rhsComponents = [...rhs.matchAll(EINSUM_COMPONENT_RE)].map((m) => m[0]);
+
+  // Compute the rank of the ellipsis by looking at the lhs operands, we choose
+  // the maximum rank because of broadcasting.
+  for (const [i, components] of lhsComponents.entries()) {
     const shape = shapes[i];
-    const components = [...part.matchAll(EINSUM_COMPONENT_RE)].map((m) => m[0]);
     const ellipsisIndex = components.indexOf("...");
     if (ellipsisIndex !== -1) {
       if (components.lastIndexOf("...") !== ellipsisIndex)
@@ -81,20 +93,16 @@ export function parseEinsumExpression(
       const numExplicit = components.length - 1;
       if (shape.length < numExplicit)
         throw new Error(
-          `Einsum operand ${i} has shape ${JSON.stringify(shape)} but indexed with "${part}"`,
+          `Einsum operand ${i} has shape ${JSON.stringify(shape)} but indexed with "${components.join("")}"`,
         );
-      const thisEllipsisRank = shape.length - numExplicit;
-      if (ellipsisRank === null) ellipsisRank = thisEllipsisRank;
-      else if (ellipsisRank !== thisEllipsisRank)
-        throw new Error(
-          `Einsum operand ${i} has shape ${JSON.stringify(shape)} but indexed with "${part}", inconsistent with previous ellipsis of rank ${ellipsisRank}`,
-        );
+      ellipsisRank = Math.max(ellipsisRank, shape.length - numExplicit);
     }
-    lhsIndices.push(componentsToIndices(components));
   }
-  const rhsIndex = componentsToIndices(
-    [...rhs.matchAll(EINSUM_COMPONENT_RE)].map((m) => m[0]),
+
+  const lhsIndices = lhsComponents.map((components, i) =>
+    componentsToIndices(components, shapes[i].length),
   );
+  const rhsIndex = componentsToIndices(rhsComponents);
   return { shapes, lhsIndices, rhsIndex };
 }
 
