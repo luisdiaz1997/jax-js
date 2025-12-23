@@ -33,6 +33,25 @@ suite.each(devices)("device:%s", (device) => {
     });
   });
 
+  suite("jax.numpy.cumsum()", () => {
+    test("computes cumsum along axis", () => {
+      const x = np.array([
+        [1, 2, 3],
+        [4, 5, 6],
+      ]);
+      const y = np.cumsum(x.ref, 0);
+      expect(y.js()).toEqual([
+        [1, 2, 3],
+        [5, 7, 9],
+      ]);
+      const z = np.cumsum(x, 1);
+      expect(z.js()).toEqual([
+        [1, 3, 6],
+        [4, 9, 15],
+      ]);
+    });
+  });
+
   suite("jax.numpy.eye()", () => {
     test("computes a square matrix", () => {
       const x = np.eye(3);

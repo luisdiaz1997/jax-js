@@ -193,9 +193,9 @@ Most operations behave the same way as they do in JAX.
 | `cov`                 | 🟠      |                                         |
 | `cross`               | 🟠      |                                         |
 | `cumprod`             | 🟠      |                                         |
-| `cumsum`              | 🟠      |                                         |
+| `cumsum`              | 🟡      | Quadratic-time                          |
 | `cumulative_prod`     | 🟠      |                                         |
-| `cumulative_sum`      | 🟠      |                                         |
+| `cumulative_sum`      | 🟡      | Quadratic-time                          |
 | `deg2rad`             | 🟢      |                                         |
 | `degrees`             | 🟢      |                                         |
 | `delete`              | 🟠      |                                         |

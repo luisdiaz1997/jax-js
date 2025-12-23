@@ -344,6 +344,29 @@ export function argmax(
   return length.sub(max(idx, axis, opts));
 }
 
+/**
+ * Cumulative sum of elements along an axis.
+ *
+ * Currently this function is `O(n^2)`, we'll improve this later on with a
+ * two-phase parallel reduction algorithm.
+ */
+export function cumsum(a: ArrayLike, axis?: number): Array {
+  a = fudgeArray(a);
+  if (axis === undefined) {
+    a = a.ravel();
+    axis = 0;
+  } else {
+    axis = checkAxis(axis, a.ndim);
+  }
+  const n = a.shape[axis];
+  a = moveaxis(a, axis, -1);
+  a = core.broadcast(a, a.shape.concat(n), [-2]) as Array;
+  return moveaxis(tril(a).sum(-1), -1, axis);
+}
+
+/** @function Alternative name for `jax.numpy.cumsum()`. */
+export const cumulativeSum = cumsum;
+
 /** Reverse the elements in an array along the given axes. */
 export function flip(x: ArrayLike, axis: core.Axis = null): Array {
   const nd = ndim(x);
