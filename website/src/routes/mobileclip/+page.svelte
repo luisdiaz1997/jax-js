@@ -7,12 +7,10 @@
     tree,
     vmap,
   } from "@jax-js/jax";
-  import { cachedFetch, opfs, safetensors, tokenizers } from "@jax-js/loaders";
+  import { opfs, safetensors, tokenizers } from "@jax-js/loaders";
   import { BookMarkedIcon, FileTextIcon } from "@lucide/svelte";
 
-  import DownloadToast, {
-    type Props as DownloadToastProps,
-  } from "$lib/common/DownloadToast.svelte";
+  import DownloadManager from "$lib/common/DownloadManager.svelte";
   import { type Book, downloadBook } from "./books";
   import {
     fromSafetensors,
@@ -31,46 +29,21 @@
   const GFLOP_PER_TEXT_EMBED = (2 * 38e6 * 77) / 1e9;
   const D_EMBED = 512;
 
+  let downloadManager: DownloadManager;
+
   async function downloadClipWeights(): Promise<safetensors.File> {
     if (_weights) return _weights;
     isDownloadingWeights = true;
     try {
-      downloadState = {
-        status: "downloading",
-      };
-
       const weightsUrl =
         "https://huggingface.co/ekzhang/jax-js-models/resolve/main/mobileclip2-s0.safetensors";
 
-      const data = await cachedFetch(weightsUrl, {}, (progress) => {
-        downloadState = {
-          status: "downloading",
-          loaded: progress.loadedBytes,
-          total: progress.totalBytes,
-        };
-      });
-
+      const data = await downloadManager.fetch("model weights", weightsUrl);
       const result = safetensors.parse(data);
-
-      downloadState = {
-        status: "success",
-        loaded: downloadState.loaded,
-      };
-      setTimeout(() => {
-        downloadState = null;
-      }, 3000);
-
       _weights = result;
       return result;
     } catch (error) {
-      downloadState = {
-        status: "error",
-        errorMessage:
-          error instanceof Error ? error.message : "Download aborted",
-      };
-      setTimeout(() => {
-        downloadState = null;
-      }, 4000);
+      alert("Error downloading weights: " + error);
       throw error;
     } finally {
       isDownloadingWeights = false;
@@ -92,7 +65,6 @@
 
   let hasModel = $state(false);
   let isDownloadingWeights = $state(false);
-  let downloadState = $state<DownloadToastProps | null>(null);
 
   let hasData = $state(false);
   let isDownloadingData = $state(false);
@@ -145,7 +117,7 @@
     } finally {
       isDownloadingData = false;
     }
-    console.log(book);
+    console.log($state.snapshot(book));
     hasData = true;
 
     const numExcerpts = book.chapters
@@ -296,9 +268,7 @@
   }
 </script>
 
-{#if downloadState}
-  <DownloadToast {...downloadState} />
-{/if}
+<DownloadManager bind:this={downloadManager} />
 
 <div class="min-h-screen bg-white">
   <!-- Header with search bar -->

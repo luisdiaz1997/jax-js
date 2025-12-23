@@ -104,7 +104,7 @@ export function wasm_log(cg: CodeGenerator): number {
     const t = cg.local.declare(cg.f32);
     const t2 = cg.local.declare(cg.f32);
 
-    // Handle negative quickly: if x <= 0 -> NaN
+    // Handle negative quickly: if x < 0 -> NaN
     cg.local.get(0);
     cg.f32.const(0.0);
     cg.f32.lt();

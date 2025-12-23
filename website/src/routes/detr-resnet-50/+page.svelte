@@ -6,13 +6,15 @@
     nn,
     numpy as np,
   } from "@jax-js/jax";
-  import { cachedFetch } from "@jax-js/loaders";
   import { ONNXModel } from "@jax-js/onnx";
 
   import { runBenchmark } from "$lib/benchmark";
+  import DownloadManager from "$lib/common/DownloadManager.svelte";
   import { COCO_CLASSES, stringToColor } from "./coco";
 
   let canvasEl: HTMLCanvasElement;
+  let downloadManager: DownloadManager;
+  let onnxModel: ONNXModel;
 
   let runCount = 0;
 
@@ -113,15 +115,19 @@
     await init("webgpu");
     defaultDevice("webgpu");
 
-    const modelUrl =
-      "https://huggingface.co/Xenova/detr-resnet-50/resolve/main/onnx/model_fp16.onnx";
-    const modelBytes = await cachedFetch(modelUrl);
-    const onnxModel = new ONNXModel(modelBytes);
-    console.log("ONNX Model loaded:", onnxModel);
+    if (typeof onnxModel === "undefined") {
+      const modelUrl =
+        "https://huggingface.co/Xenova/detr-resnet-50/resolve/main/onnx/model_fp16.onnx";
+      const modelBytes = await downloadManager.fetch("model weights", modelUrl);
+      onnxModel = new ONNXModel(modelBytes);
+      console.log("ONNX Model loaded:", onnxModel);
+    }
 
     const imageUrls = [
       "https://upload.wikimedia.org/wikipedia/commons/0/00/Gats_domestics.png",
       "https://upload.wikimedia.org/wikipedia/commons/d/d9/Desk333.JPG",
+      "https://upload.wikimedia.org/wikipedia/commons/3/36/Afrykarium_tunel.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/b/b4/Stanton_Cafe_and_Bar_in_Brisbane%2C_Queensland_09.jpg",
     ];
     const imageUrl = imageUrls[runCount++ % imageUrls.length];
 
@@ -170,7 +176,7 @@
       w: number;
       h: number;
     }[] = [];
-    console.log("Detections:");
+    // console.log("Detections:");
     for (let i = 0; i < 100; i++) {
       let bestClass = 0;
       let bestProb = 0;
@@ -191,18 +197,18 @@
           w,
           h,
         });
-        console.log(
-          `  ${COCO_CLASSES[bestClass]}: ${(bestProb * 100).toFixed(1)}% at [cx=${cx.toFixed(2)}, cy=${cy.toFixed(2)}, w=${w.toFixed(2)}, h=${h.toFixed(2)}]`,
-        );
+        // console.log(
+        //   `  ${COCO_CLASSES[bestClass]}: ${(bestProb * 100).toFixed(1)}% at [cx=${cx.toFixed(2)}, cy=${cy.toFixed(2)}, w=${w.toFixed(2)}, h=${h.toFixed(2)}]`,
+        // );
       }
     }
 
     // Draw detections on the canvas
     drawDetections(detections);
-
-    onnxModel.dispose();
   }
 </script>
+
+<DownloadManager bind:this={downloadManager} />
 
 <main class="p-4">
   <button onclick={loadAndRun} class="border px-2">

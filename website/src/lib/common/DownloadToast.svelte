@@ -5,13 +5,14 @@
   import { formatBytes } from "$lib/chart/format";
 
   export interface Props {
+    name: string;
     status: "downloading" | "success" | "error";
     loaded?: number;
     total?: number;
     errorMessage?: string;
   }
 
-  let { status, loaded, total, errorMessage }: Props = $props();
+  let { name, status, loaded, total, errorMessage }: Props = $props();
 </script>
 
 <div
@@ -34,9 +35,9 @@
     <div class="flex-1">
       <div class="font-medium text-sm mb-1">
         {#if status === "downloading"}
-          <p class="text-gray-700">Downloading model weights…</p>
+          <p class="text-gray-700">Downloading {name}…</p>
         {:else if status === "success"}
-          <p class="text-green-700">Model weights loaded!</p>
+          <p class="text-green-700">Loaded {name}!</p>
         {:else if status === "error"}
           <p class="text-red-700">Failed to download</p>
         {/if}
