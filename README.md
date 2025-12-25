@@ -287,6 +287,7 @@ If you make something cool with jax-js, don't be a stranger! We can feature it h
 
 - [Training neural networks on MNIST](https://jax-js.com/mnist)
 - [CLIP embeddings for books in-browser](https://jax-js.com/mobileclip)
+- [Object detection with DETR ResNet-50 (ONNX)](https://jax-js.com/detr-resnet-50)
 - [In-browser REPL](https://jax-js.com/repl)
 - [Matmul benchmark](https://jax-js.com/bench/matmul)
 - [Conv2d benchmark](https://jax-js.com/bench/conv2d)
