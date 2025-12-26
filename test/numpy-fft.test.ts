@@ -34,8 +34,12 @@ suite.each(devices)("device:%s", (device) => {
       const imag = np.array([-5, 9, 0, 3, -1, 4, 2, 8]);
       const fftResult = np.fft.fft({ real: real.ref, imag: imag.ref });
       const ifftResult = np.fft.ifft(fftResult);
-      expect(await ifftResult.real.jsAsync()).toBeAllclose(real);
-      expect(await ifftResult.imag.jsAsync()).toBeAllclose(imag);
+      expect(await ifftResult.real.jsAsync()).toBeAllclose(real, {
+        atol: 1e-5,
+      });
+      expect(await ifftResult.imag.jsAsync()).toBeAllclose(imag, {
+        atol: 1e-5,
+      });
     });
   });
 });

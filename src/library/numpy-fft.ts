@@ -2,6 +2,7 @@
 
 import { arange, Array, concatenate, cos, sin } from "./numpy";
 import { isFloatDtype } from "../alu";
+import { jit } from "../frontend/jaxpr";
 import { checkAxis, deepEqual, invertPermutation, range, rep } from "../utils";
 
 /**
@@ -40,6 +41,36 @@ function checkPowerOfTwo(name: string, n: number) {
   }
 }
 
+const fftUpdate = jit(
+  function fftUpdate(i: number, { real, imag }: ComplexPair): ComplexPair {
+    const half = 2 ** i;
+
+    real = real.reshape([-1, 2 * half]);
+    imag = imag.reshape([-1, 2 * half]);
+
+    const k = arange(0, half, 1, { dtype: real.dtype });
+    const theta = k.mul(-Math.PI / half);
+    const wr = cos(theta.ref);
+    const wi = sin(theta);
+
+    const ur = real.ref.slice([], [0, half]);
+    const ui = imag.ref.slice([], [0, half]);
+    const vr = real.slice([], [half, 2 * half]);
+    const vi = imag.slice([], [half, 2 * half]);
+
+    // t = w * v
+    const tr = vr.ref.mul(wr.ref).sub(vi.ref.mul(wi.ref));
+    const ti = vr.mul(wi).add(vi.mul(wr));
+
+    // store [u + t, u - t]
+    return {
+      real: concatenate([ur.ref.add(tr.ref), ur.sub(tr)], -1),
+      imag: concatenate([ui.ref.add(ti.ref), ui.sub(ti)], -1),
+    };
+  },
+  { staticArgnums: [0] },
+);
+
 /**
  * Compute a one-dimensional discrete Fourier transform.
  *
@@ -66,31 +97,17 @@ export function fft(a: ComplexPair, axis: number = -1): ComplexPair {
   // Cooley-Tukey FFT (radix-2)
   const originalShape = real.shape;
   real = real
-    .reshape([-1, ...rep(logN, 2), 1])
-    .transpose([0, ...range(1, logN + 1).reverse(), logN + 1]);
+    .reshape([-1, ...rep(logN, 2)])
+    .transpose([0, ...range(1, logN + 1).reverse()])
+    .flatten();
   imag = imag
-    .reshape([-1, ...rep(logN, 2), 1])
-    .transpose([0, ...range(1, logN + 1).reverse(), logN + 1]);
+    .reshape([-1, ...rep(logN, 2)])
+    .transpose([0, ...range(1, logN + 1).reverse()])
+    .flatten();
+
+  // Hack: If you don't do it, the arrays might be lazy and grow exponentially.
   for (let i = 0; i < logN; i++) {
-    const half = 2 ** i;
-
-    const k = arange(0, half, 1, { dtype: real.dtype });
-    const theta = k.mul(-Math.PI / half);
-    const wr = cos(theta.ref);
-    const wi = sin(theta);
-
-    const ur = real.ref.slice(...rep(logN - i, [] as []), 0);
-    const ui = imag.ref.slice(...rep(logN - i, [] as []), 0);
-    const vr = real.slice(...rep(logN - i, [] as []), 1);
-    const vi = imag.slice(...rep(logN - i, [] as []), 1);
-
-    // t = w * v
-    const tr = vr.ref.mul(wr.ref).sub(vi.ref.mul(wi.ref));
-    const ti = vr.mul(wi).add(vi.mul(wr));
-
-    // store [u + t, u - t]
-    real = concatenate([ur.ref.add(tr.ref), ur.sub(tr)], -1);
-    imag = concatenate([ui.ref.add(ti.ref), ui.sub(ti)], -1);
+    ({ real, imag } = fftUpdate(i, { real, imag }));
   }
   real = real.reshape(originalShape);
   imag = imag.reshape(originalShape);
