@@ -144,9 +144,6 @@ type ArrayConstructorArgs = {
  * "Array" type by name.
  */
 export class Array extends Tracer {
-  static #nextId = 1001; // For unique hashing where needed.
-
-  id: number;
   #dtype: DType;
   #weakType: boolean;
   #source: AluExp | Slot;
@@ -165,7 +162,6 @@ export class Array extends Tracer {
    */
   constructor(args: ArrayConstructorArgs) {
     super(baseArrayTrace);
-    this.id = Array.#nextId++;
     this.#dtype = args.dtype;
     this.#weakType = args.weakType;
     this.#source = args.source;
@@ -985,7 +981,7 @@ export class Array extends Tracer {
       [Primitive.Gather]([x, ...indices], { axis, outDim }) {
         return [x.#gather(indices, axis, outDim)];
       },
-      [Primitive.Jit](args, { jaxpr, numConsts }) {
+      [Primitive.Jit](args, { jaxpr }) {
         if (jaxpr.inBinders.length !== args.length) {
           throw new Error(
             `jit expects ${jaxpr.inBinders.length} args, got ${args.length}`,
@@ -995,11 +991,9 @@ export class Array extends Tracer {
         const { backend, committed } = Array.#computeBackend("jit", args);
         args = args.map((ar) => ar._putSync(backend));
 
-        const consts = args.slice(0, numConsts);
-        const tracers = args.slice(numConsts);
-        const jp = jitCompile(backend, jaxpr, consts);
+        const jp = jitCompile(backend, jaxpr);
         const { outputs, pending } = jp.execute(
-          tracers.map((x) => x._realizeSource()),
+          args.map((x) => x._realizeSource()),
         );
         for (const exe of pending) exe.updateRc(+outputs.length - 1);
 
